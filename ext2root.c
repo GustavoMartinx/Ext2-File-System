@@ -29,6 +29,19 @@ static void read_inode(int fd, int inode_no, const struct ext2_group_desc *group
 	read(fd, inode, sizeof(struct ext2_inode));
 } /* read_inode() */
 
+void print_read_root_inode( __u16 i_mode, __u16 i_uid, __u32 i_size, __u32 i_blocks)
+{
+	printf("Reading root inode\n"
+		   "File mode: %hu\n"
+		   "Owner UID: %hu\n"
+		   "Size     : %u bytes\n"
+		   "Blocks   : %u\n",
+		   i_mode,     /* inode.i_mode */
+		   i_uid,      /* inode.i_mode */
+		   i_size,     /* inode.i_mode */
+		   i_blocks);  /* inode.i_mode */
+}
+
 int main(void)
 {
 	struct ext2_super_block super;
@@ -66,16 +79,8 @@ int main(void)
 	/* read root inode */
 
 	read_inode(fd, 2, &group, &inode);
-
-	printf("Reading root inode\n"
-		   "File mode: %hu\n"
-		   "Owner UID: %hu\n"
-		   "Size     : %u bytes\n"
-		   "Blocks   : %u\n",
-		   inode.i_mode,
-		   inode.i_uid,
-		   inode.i_size,
-		   inode.i_blocks);
+	
+	print_read_root_inode(inode.i_mode, inode.i_uid, inode.i_size, inode.i_blocks);
 
 	for (i = 0; i < EXT2_N_BLOCKS; i++)
 		if (i < EXT2_NDIR_BLOCKS) /* direct blocks */
