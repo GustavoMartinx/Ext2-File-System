@@ -28,13 +28,36 @@ static void read_inode(int fd, int inode_no, const struct ext2_group_desc *group
 	read(fd, inode, sizeof(struct ext2_inode));
 } /* read_inode() */
 
+void print_read_root_inode(struct ext2_inode inode)
+{
+	printf("Reading root inode\n"
+		   "File mode: %hu\n"
+		   "Owner UID: %hu\n"
+		   "Size     : %u bytes\n"
+		   "Blocks   : %u\n",
+		   inode.i_mode,     /* inode.i_mode */
+		   inode.i_uid,      /* inode.i_mode */
+		   inode.i_size,     /* inode.i_mode */
+		   inode.i_blocks);  /* inode.i_mode */
+
+	for (int i = 0; i < EXT2_N_BLOCKS; i++)
+		if (i < EXT2_NDIR_BLOCKS) /* direct blocks */
+			printf("Block %2u : %u\n", i, inode.i_block[i]);
+		else if (i == EXT2_IND_BLOCK) /* single indirect block */
+			printf("Single   : %u\n", inode.i_block[i]);
+		else if (i == EXT2_DIND_BLOCK) /* double indirect block */
+			printf("Double   : %u\n", inode.i_block[i]);
+		else if (i == EXT2_TIND_BLOCK) /* triple indirect block */
+			printf("Triple   : %u\n", inode.i_block[i]);
+}
+
 int main(void)
 {
 	struct ext2_super_block super;
 	struct ext2_group_desc group;
+	struct ext2_inode inode;
 	int fd;
-	// struct ext2_inode inode;
-	// int i;
+	// int i; (i do for de imprimir read root inode)
 
 	/* open floppy device */
 
@@ -43,7 +66,9 @@ int main(void)
 		exit(1);  /* error while opening the floppy device */
 	}
 
-	/* read super-block */
+	
+	
+	/****** read super-block *******/
 
 	lseek(fd, BASE_OFFSET, SEEK_SET); 
 	read(fd, &super, sizeof(super));
@@ -81,53 +106,41 @@ int main(void)
 	       super.s_creator_os,
 	       super.s_first_ino,          /* first non-reserved inode */
 	       super.s_inode_size);
-//
-//
-//	/* read group descriptor */
-//
+
+	printf("\n\n");
+
+
+
+
+	/********* read group descriptor ***********/
+
 	lseek(fd, BASE_OFFSET + block_size, SEEK_SET);
 	read(fd, &group, sizeof(group));
-//	//close(fd);
-//
-//	printf("Reading first group-descriptor from device " FD_DEVICE ":\n"
-//	       "Blocks bitmap block: %u\n"
-//	       "Inodes bitmap block: %u\n"
-//	       "Inodes table block : %u\n"
-//	       "Free blocks count  : %u\n"
-//	       "Free inodes count  : %u\n"
-//	       "Directories count  : %u\n"
-//	       ,
-//	       group.bg_block_bitmap,
-//	       group.bg_inode_bitmap,
-//	       group.bg_inode_table,
-//	       group.bg_free_blocks_count,
-//	       group.bg_free_inodes_count,
-//	       group.bg_used_dirs_count);    /* directories count */
+	//close(fd);
+
+	printf("Reading first group-descriptor from device " FD_DEVICE ":\n"
+	       "Blocks bitmap block: %u\n"
+	       "Inodes bitmap block: %u\n"
+	       "Inodes table block : %u\n"
+	       "Free blocks count  : %u\n"
+	       "Free inodes count  : %u\n"
+	       "Directories count  : %u\n"
+	       ,
+	       group.bg_block_bitmap,
+	       group.bg_inode_bitmap,
+	       group.bg_inode_table,
+	       group.bg_free_blocks_count,
+	       group.bg_free_inodes_count,
+	       group.bg_used_dirs_count);    /* directories count */
+
+	printf("\n\n");
+
 
 	
-	
-	/* read root inode */
-// 	read_inode(fd, 2, &group, &inode);
-// 
-// 	printf("Reading root inode\n"
-// 		   "File mode: %hu\n"
-// 		   "Owner UID: %hu\n"
-// 		   "Size     : %u bytes\n"
-// 		   "Blocks   : %u\n",
-// 		   inode.i_mode,
-// 		   inode.i_uid,
-// 		   inode.i_size,
-// 		   inode.i_blocks);
-// 
-// 	for (i = 0; i < EXT2_N_BLOCKS; i++)
-// 		if (i < EXT2_NDIR_BLOCKS) /* direct blocks */
-// 			printf("Block %2u : %u\n", i, inode.i_block[i]);
-// 		else if (i == EXT2_IND_BLOCK) /* single indirect block */
-// 			printf("Single   : %u\n", inode.i_block[i]);
-// 		else if (i == EXT2_DIND_BLOCK) /* double indirect block */
-// 			printf("Double   : %u\n", inode.i_block[i]);
-// 		else if (i == EXT2_TIND_BLOCK) /* triple indirect block */
-// 			printf("Triple   : %u\n", inode.i_block[i]);
+	/******** read root inode ********/
+ 	read_inode(fd, 2, &group, &inode);
+ 
+ 	print_read_root_inode(inode);
 
 	close(fd);
 	exit(0);
