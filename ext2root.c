@@ -29,17 +29,27 @@ static void read_inode(int fd, int inode_no, const struct ext2_group_desc *group
 	read(fd, inode, sizeof(struct ext2_inode));
 } /* read_inode() */
 
-void print_read_root_inode( __u16 i_mode, __u16 i_uid, __u32 i_size, __u32 i_blocks)
+void print_read_root_inode(struct ext2_inode inode)
 {
 	printf("Reading root inode\n"
 		   "File mode: %hu\n"
 		   "Owner UID: %hu\n"
 		   "Size     : %u bytes\n"
 		   "Blocks   : %u\n",
-		   i_mode,     /* inode.i_mode */
-		   i_uid,      /* inode.i_mode */
-		   i_size,     /* inode.i_mode */
-		   i_blocks);  /* inode.i_mode */
+		   inode.i_mode,     /* inode.i_mode */
+		   inode.i_uid,      /* inode.i_mode */
+		   inode.i_size,     /* inode.i_mode */
+		   inode.i_blocks);  /* inode.i_mode */
+
+	for (int i = 0; i < EXT2_N_BLOCKS; i++)
+		if (i < EXT2_NDIR_BLOCKS) /* direct blocks */
+			printf("Block %2u : %u\n", i, inode.i_block[i]);
+		else if (i == EXT2_IND_BLOCK) /* single indirect block */
+			printf("Single   : %u\n", inode.i_block[i]);
+		else if (i == EXT2_DIND_BLOCK) /* double indirect block */
+			printf("Double   : %u\n", inode.i_block[i]);
+		else if (i == EXT2_TIND_BLOCK) /* triple indirect block */
+			printf("Triple   : %u\n", inode.i_block[i]);
 }
 
 int main(void)
@@ -80,17 +90,9 @@ int main(void)
 
 	read_inode(fd, 2, &group, &inode);
 	
-	print_read_root_inode(inode.i_mode, inode.i_uid, inode.i_size, inode.i_blocks);
+	print_read_root_inode(inode);
 
-	for (i = 0; i < EXT2_N_BLOCKS; i++)
-		if (i < EXT2_NDIR_BLOCKS) /* direct blocks */
-			printf("Block %2u : %u\n", i, inode.i_block[i]);
-		else if (i == EXT2_IND_BLOCK) /* single indirect block */
-			printf("Single   : %u\n", inode.i_block[i]);
-		else if (i == EXT2_DIND_BLOCK) /* double indirect block */
-			printf("Double   : %u\n", inode.i_block[i]);
-		else if (i == EXT2_TIND_BLOCK) /* triple indirect block */
-			printf("Triple   : %u\n", inode.i_block[i]);
+	
 
 	close(fd);
 	exit(0);
