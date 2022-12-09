@@ -22,6 +22,40 @@
 
 static unsigned int block_size = 0;        /* block size (to be calculated) */
 
+// Function to read super block
+void read_super_block(struct ext2_super_block super) {
+
+	printf("Reading super-block from device " FD_DEVICE ":\n"
+	       "Inodes count            : %u\n"
+	       "Blocks count            : %u\n"
+	       "Reserved blocks count   : %u\n"
+	       "Free blocks count       : %u\n"
+	       "Free inodes count       : %u\n"
+	       "First data block        : %u\n"
+	       "Block size              : %u\n"
+	       "Blocks per group        : %u\n"
+	       "Inodes per group        : %u\n"
+	       "Creator OS              : %u\n"
+	       "First non-reserved inode: %u\n"
+	       "Size of inode structure : %hu\n"
+	       ,
+	       super.s_inodes_count,  
+	       super.s_blocks_count,
+	       super.s_r_blocks_count,     /* reserved blocks count */
+	       super.s_free_blocks_count,
+	       super.s_free_inodes_count,
+	       super.s_first_data_block,
+	       block_size,
+	       super.s_blocks_per_group,
+	       super.s_inodes_per_group,
+	       super.s_creator_os,
+	       super.s_first_ino,          /* first non-reserved inode */
+	       super.s_inode_size);
+		
+		   printf("\n\n");
+}
+
+// Function to read inode
 static void read_inode(int fd, int inode_no, const struct ext2_group_desc *group, struct ext2_inode *inode)
 {
 	lseek(fd, BLOCK_OFFSET(group->bg_inode_table) + (inode_no - 1) * sizeof(struct ext2_inode), SEEK_SET);
@@ -68,6 +102,11 @@ int main(void)
 
 	
 	
+
+
+
+
+
 	/****** read super-block *******/
 
 	lseek(fd, BASE_OFFSET, SEEK_SET); 
@@ -80,34 +119,12 @@ int main(void)
 		
 	block_size = 1024 << super.s_log_block_size;
 
-	printf("Reading super-block from device " FD_DEVICE ":\n"
-	       "Inodes count            : %u\n"
-	       "Blocks count            : %u\n"
-	       "Reserved blocks count   : %u\n"
-	       "Free blocks count       : %u\n"
-	       "Free inodes count       : %u\n"
-	       "First data block        : %u\n"
-	       "Block size              : %u\n"
-	       "Blocks per group        : %u\n"
-	       "Inodes per group        : %u\n"
-	       "Creator OS              : %u\n"
-	       "First non-reserved inode: %u\n"
-	       "Size of inode structure : %hu\n"
-	       ,
-	       super.s_inodes_count,  
-	       super.s_blocks_count,
-	       super.s_r_blocks_count,     /* reserved blocks count */
-	       super.s_free_blocks_count,
-	       super.s_free_inodes_count,
-	       super.s_first_data_block,
-	       block_size,
-	       super.s_blocks_per_group,
-	       super.s_inodes_per_group,
-	       super.s_creator_os,
-	       super.s_first_ino,          /* first non-reserved inode */
-	       super.s_inode_size);
+	read_super_block(super);
 
-	printf("\n\n");
+
+
+
+
 
 
 
@@ -136,11 +153,24 @@ int main(void)
 	printf("\n\n");
 
 
+
+
+
+
+
+
 	
 	/******** read root inode ********/
  	read_inode(fd, 2, &group, &inode);
  
  	print_read_root_inode(inode);
+
+
+
+
+
+
+
 
 	close(fd);
 	exit(0);
