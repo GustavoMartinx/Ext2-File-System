@@ -22,22 +22,23 @@
 
 static unsigned int block_size = 0;        /* block size (to be calculated) */
 
+
 // Function to read super block
 void read_super_block(struct ext2_super_block super) {
 
 	printf("Reading super-block from device " FD_DEVICE ":\n"
-	       "Inodes count            : %u\n"
-	       "Blocks count            : %u\n"
-	       "Reserved blocks count   : %u\n"
-	       "Free blocks count       : %u\n"
-	       "Free inodes count       : %u\n"
-	       "First data block        : %u\n"
-	       "Block size              : %u\n"
-	       "Blocks per group        : %u\n"
-	       "Inodes per group        : %u\n"
-	       "Creator OS              : %u\n"
+	       "Inodes count............: %u\n"
+	       "Blocks count............: %u\n"
+	       "Reserved blocks count...: %u\n"
+	       "Free blocks count.......: %u\n"
+	       "Free inodes count.......: %u\n"
+	       "First data block........: %u\n"
+	       "Block size..............: %u\n"
+	       "Blocks per group........: %u\n"
+	       "Inodes per group........: %u\n"
+	       "Creator OS..............: %u\n"
 	       "First non-reserved inode: %u\n"
-	       "Size of inode structure : %hu\n"
+	       "Size of inode structure.: %hu\n"
 	       ,
 	       super.s_inodes_count,  
 	       super.s_blocks_count,
@@ -52,8 +53,31 @@ void read_super_block(struct ext2_super_block super) {
 	       super.s_first_ino,          /* first non-reserved inode */
 	       super.s_inode_size);
 		
-		   printf("\n\n");
+	printf("\n\n");
 }
+
+
+
+void read_group_descriptor(struct ext2_group_desc group) {
+	printf("Reading first group-descriptor from device " FD_DEVICE ":\n"
+	       "Blocks bitmap block: %u\n"
+	       "Inodes bitmap block: %u\n"
+	       "Inodes table block.: %u\n"
+	       "Free blocks count..: %u\n"
+	       "Free inodes count..: %u\n"
+	       "Directories count..: %u\n"
+	       ,
+	       group.bg_block_bitmap,
+	       group.bg_inode_bitmap,
+	       group.bg_inode_table,
+	       group.bg_free_blocks_count,
+	       group.bg_free_inodes_count,
+	       group.bg_used_dirs_count);    /* directories count */
+
+	printf("\n\n");
+}
+
+
 
 // Function to read inode
 static void read_inode(int fd, int inode_no, const struct ext2_group_desc *group, struct ext2_inode *inode)
@@ -62,13 +86,17 @@ static void read_inode(int fd, int inode_no, const struct ext2_group_desc *group
 	read(fd, inode, sizeof(struct ext2_inode));
 } /* read_inode() */
 
+
+
+
+// Function to read root inode
 void print_read_root_inode(struct ext2_inode inode)
 {
 	printf("Reading root inode\n"
 		   "File mode: %hu\n"
 		   "Owner UID: %hu\n"
-		   "Size     : %u bytes\n"
-		   "Blocks   : %u\n",
+		   "Size.....: %u bytes\n"
+		   "Blocks...: %u\n",
 		   inode.i_mode,     /* inode.i_mode */
 		   inode.i_uid,      /* inode.i_mode */
 		   inode.i_size,     /* inode.i_mode */
@@ -78,12 +106,15 @@ void print_read_root_inode(struct ext2_inode inode)
 		if (i < EXT2_NDIR_BLOCKS) /* direct blocks */
 			printf("Block %2u : %u\n", i, inode.i_block[i]);
 		else if (i == EXT2_IND_BLOCK) /* single indirect block */
-			printf("Single   : %u\n", inode.i_block[i]);
+			printf("Single...: %u\n", inode.i_block[i]);
 		else if (i == EXT2_DIND_BLOCK) /* double indirect block */
-			printf("Double   : %u\n", inode.i_block[i]);
+			printf("Double...: %u\n", inode.i_block[i]);
 		else if (i == EXT2_TIND_BLOCK) /* triple indirect block */
-			printf("Triple   : %u\n", inode.i_block[i]);
+			printf("Triple...: %u\n", inode.i_block[i]);
 }
+
+
+
 
 int main(void)
 {
@@ -124,37 +155,13 @@ int main(void)
 
 
 
-
-
-
-
-
 	/********* read group descriptor ***********/
 
 	lseek(fd, BASE_OFFSET + block_size, SEEK_SET);
 	read(fd, &group, sizeof(group));
 	//close(fd);
-
-	printf("Reading first group-descriptor from device " FD_DEVICE ":\n"
-	       "Blocks bitmap block: %u\n"
-	       "Inodes bitmap block: %u\n"
-	       "Inodes table block : %u\n"
-	       "Free blocks count  : %u\n"
-	       "Free inodes count  : %u\n"
-	       "Directories count  : %u\n"
-	       ,
-	       group.bg_block_bitmap,
-	       group.bg_inode_bitmap,
-	       group.bg_inode_table,
-	       group.bg_free_blocks_count,
-	       group.bg_free_inodes_count,
-	       group.bg_used_dirs_count);    /* directories count */
-
-	printf("\n\n");
-
-
-
-
+	
+	read_group_descriptor(group);
 
 
 
@@ -164,12 +171,6 @@ int main(void)
  	read_inode(fd, 2, &group, &inode);
  
  	print_read_root_inode(inode);
-
-
-
-
-
-
 
 
 	close(fd);
