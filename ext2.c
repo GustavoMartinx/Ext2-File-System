@@ -237,25 +237,101 @@ void read_file(int fd, struct ext2_inode *inode)
 	}
 }
 
-void ls() {
-	// read_dir(int fd, const struct ext2_inode *inode, const struct ext2_group_desc *group, char* nomeArquivo);
+void ls(struct ext2_inode *inode, struct ext2_group_desc *group) {
+
+	void *block;
+
+	if (S_ISDIR(inode->i_mode)) {
+		struct ext2_dir_entry_2 *entry;
+		unsigned int size = 0;
+
+		if ((block = malloc(block_size)) == NULL) { /* allocate memory for the data block */
+			fprintf(stderr, "Memory error\n");
+			close(fd);
+			exit(1);
+		}
+
+		lseek(fd, BLOCK_OFFSET(inode->i_block[0]), SEEK_SET);
+		read(fd, block, block_size);                /* read block from disk*/
+
+		entry = (struct ext2_dir_entry_2 *) block;  /* first entry in the directory */
+
+		while((size < inode->i_size) && entry->inode) {
+
+			char file_name[EXT2_NAME_LEN+1];
+			memcpy(file_name, entry->name, entry->name_len);
+			file_name[entry->name_len] = 0;     	/* append null character to the file name */
+ 
+			printf("%s\n"
+			       "inode: %10u\n"
+				   "Record lenght: %hu\n"
+			       "Name lenght: %d\n"
+				   "File type: %d\n\n",
+					file_name,
+					entry->inode,
+					entry->rec_len,
+					entry->name_len,
+					entry->file_type);
+			
+			// Iteration
+			entry = (void*) entry + entry->rec_len;  // casting
+			size += entry->rec_len;
+		}
+
+		free(block);
+	}
+
+	printf("\n\n");
 }
 
-void attr(){
-	struct ext2_acl_entry* entry;
-
-	printf("%s\n"
-			"inode: %10u\n"
-			"Record lenght: %hu\n"
-			"Name lenght: %d\n"
-			"File type: %d\n\n",
+void attr(struct ext2_inode *inode, struct ext2_group_desc *group, char *nome, int grupoAtual){
+	struct ext2_inode* entry = (struct ext2_inode*)malloc(sizeof(struct ext2_inode));
+	struct ext2_group_desc *grupoTemp = (struct ext2_group_desc *)malloc(sizeof(struct ext2_group_desc));
+	//unsigned int index = (read_dir(fd, &inode, &group, nomeArquivo)) % super.s_inodes_per_group;
+	//read_inode(index, novoGroup, novoInode);
+	//pega o group_number() e joga para o read inode.
+	//read_inode(index, novoGroup, novoInode);
+	/*printf("%s\n"
+			"permissões %hu\t"
+			"uid %hu\t"
+			"gid %hu\t"
+			"tamanho %u\t",
 			//file_name,
 			entry->acle_size,
-			entry->acle_perms
-			//entry->name_len,
-			//entry->file_type
-			);
+			entry->acle_perms,
+			entry->acle_tag,
+			entry->acle_tag
+			);*/
+	//printf("%s\n"
+	//		"permissões %hu\t"
+	//		"uid %hu\t"
+	//		"gid %hu\t"
+	//		"tamanho %hu\t"
+	//		"modificado em %hu\t",
+	//		entry->i_mode,
+	//		entry->i_uid,
+	//		entry->i_gid,
+	//		entry->i_size,
+	//		entry->i_mtime
+	//		);
 }
+
+void pwd(){
+	//mostra(&orig);
+}
+
+void change_directory(char* dirName, struct ext2_inode *inode, struct ext2_group_desc *group, int *currentGroup) {
+
+	/*
+	struct ext2_dir_entry_2 *entry;
+	procura o nome do arquivo correspondente, se encontrar coloca na pilha
+	fazer uma inicialização da pilha contendo o nome do diretótio principal???
+	if(nomeArquivo != ".." && nomeArquivo != "."){
+		PUSH(nomeArquivo, &orig);
+	}
+	else if(nomeArquivo == ".."){
+		POP(&orig);
+	} 
 
 /*cd livros
 livros
