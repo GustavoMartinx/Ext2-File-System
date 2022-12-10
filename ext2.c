@@ -268,9 +268,18 @@ file type: 2*/
 
 
 
+void chage_group(unsigned int *inode, struct ext2_group_desc *groupToGo, int *currentGroup) {
 
+	unsigned int block_group = ((*inode) - 1) / super.s_inodes_per_group; // Cálculo do grupo do Inode
 
+	if (block_group != (*currentGroup))
+	{
+		*currentGroup = block_group;
 
+		lseek(fd, BASE_OFFSET + block_size + sizeof(struct ext2_group_desc) * block_group, SEEK_SET);
+		read(fd, groupToGo, sizeof(struct ext2_group_desc));
+	}
+}
 
 
 
