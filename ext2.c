@@ -1,4 +1,4 @@
-/*
+/*https://pt.stackoverflow.com/questions/285713/como-inserir-na-pilha-de-dados-uma-string
  * ext2super.c
  *
  * Reads the super-block from a Ext2 floppy disk.
@@ -11,7 +11,9 @@
 #include "./utils.h"
 
 static unsigned int block_size = 0;        /* block size (to be calculated) */
-   
+struct ext2_super_block super;
+int fd;
+
 
 
 /* Structure of the super block */
@@ -63,7 +65,6 @@ struct ext2_super_block {
 	__u32	s_reserved[204];	/* Padding to the end of the block */
 };
 
-struct ext2_super_block super;
 
 // Function to read super block
 void read_super_block() {
@@ -79,7 +80,7 @@ void read_super_block() {
 		   "Groups count............: %u\n"
 	       "Groups size.............: %u blocks\n"
 	       "Groups inodes...........: %u inodes\n"
-		   "Inodetable size.........: %u blocks\n"
+		   "Inodetable size.........: %lu blocks\n"
 	       ,  
 		   super.s_volume_name, //nome do volume 
 		   (super.s_blocks_count * block_size /* super.s_blocks_per_group*/), //tamanho da imagem
@@ -174,35 +175,23 @@ static unsigned int read_dir(int fd, const struct ext2_inode *inode, const struc
 		}
 
 		lseek(fd, BLOCK_OFFSET(inode->i_block[0]), SEEK_SET);
-		read(fd, block, block_size);                /* read block from disk*/
+		read(fd, block, block_size);                /* read block from disk */
 
 		entry = (struct ext2_dir_entry_2 *) block;  /* first entry in the directory */
-                /* Notice that the list may be terminated with a NULL
-                   entry (entry->inode == NULL)*/
+
 		while((size < inode->i_size) && entry->inode) {
+
 			char file_name[EXT2_NAME_LEN+1];
 			memcpy(file_name, entry->name, entry->name_len);
-			file_name[entry->name_len] = 0;     /* append null character to the file name */
+			file_name[entry->name_len] = 0;     	/* append null character to the file name */
 
 			// PARA RETORNAR INODE
 			if((strcmp(nomeArquivo, entry->name)) == 0){
 				return entry->inode;
 			}
-
-			//parametros do cd e ls 
-			printf("%s\n"
-			       "inode: %10u\n"
-				   "Record lenght: %hu\n"
-			       "Name lenght: %d\n"
-				   "File type: %d\n\n",
-					file_name,
-					entry->inode,
-					entry->rec_len,
-					entry->name_len,
-					entry->file_type);
 			
-
-			entry = (void*) entry + entry->rec_len;
+			// Iteration
+			entry = (void*) entry + entry->rec_len;  // casting
 			size += entry->rec_len;
 		}
 
@@ -215,11 +204,8 @@ static unsigned int read_dir(int fd, const struct ext2_inode *inode, const struc
 
 // Function to get the number of a group
 unsigned int group_number(unsigned int inode, struct ext2_super_block super) {
-	unsigned int group_number = (inode-1) / super.s_inodes_per_group;
-	printf("INODE: %hu\n", inode);
-	printf("blocos: %hu\n", super.s_inodes_per_group);
-	printf("grupo: %hu\n", group_number);
-	return group_number;
+	unsigned int group_numbere = (inode-1) / super.s_inodes_per_group;
+	return group_numbere;
 }
 
 
@@ -434,15 +420,14 @@ int main()
 	
 	struct ext2_inode inode;
 	struct ext2_group_desc group;
-	int fd;
+	int currentGroup = 0;
+	
 
 	/* open floppy device */
 	if ((fd = open(FD_DEVICE, O_RDONLY)) < 0) {
 		perror(FD_DEVICE);
 		exit(1);  /* error while opening the floppy device */
 	}
-
-
 
 
 
@@ -494,7 +479,8 @@ int main()
 	
 	
 	/******** TEST LS **********/
-	// ls();
+	// printf("***** TEST LS ******\n\n");
+	// ls(&inode, &group);
 
 
 	/******** PRINT FILE CONTENT **********/
@@ -503,19 +489,38 @@ int main()
 
 
 
-
+	
 	/******** TEST CAT (p/ arq especifico -> não. precisamos do cd) **********/
-	read_inode(fd, 2, &group, &inode);
-	unsigned int entry_inode = read_dir(fd, &inode, &group, "hello.txt");
+//	read_inode(fd, 2, &group, &inode);
+//	unsigned int entry_inode = read_dir(fd, &inode, &group, "hello.txt");
+//
+//	read_inode(fd, entry_inode, &group, &inode);
+//	read_file(fd, &inode);
+//
+//
+//	/************* TEST GETTING GROUP NUMBER *******************/
+//	entry_inode = 12289;  // documentos
+//	unsigned int gp_number = group_number(entry_inode, super);
+//	printf("%hu\n", gp_number);
+//
+//
+//	/************ TEST ATTR **************/
+//	read_inode(fd, 2, &group, &inode);
+//	unsigned int entry_inod = read_dir(fd, &inode, &group, "hello.txt");
 
-	read_inode(fd, entry_inode, &group, &inode);
-	read_file(fd, &inode);
+
+	/********* TEST CHANGE GROUP ********/
+	// chageGroup(&inode, &groupToGo, &currentGroup);
+	
+
+	/******* TEST CD *****/
+	printf("*************************************************\n");
+	change_directory("livros", &inode, &group, &currentGroup);
+
+	change_directory("religiosos", &inode, &group, &currentGroup);
 
 
-	/************* TEST GETTING GROUP NUMBER *******************/
-	entry_inode = 12289;  // documentos
-	unsigned int gp_number = group_number(entry_inode, super);
-	printf("%hu\n", gp_number);
+
 
 
 	close(fd);
