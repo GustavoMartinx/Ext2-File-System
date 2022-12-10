@@ -165,6 +165,72 @@ void print_read_root_inode(struct ext2_inode inode)
 			printf("Double...: %u\n", inode.i_block[i]);
 		else if (i == EXT2_TIND_BLOCK) /* triple indirect block */
 			printf("Triple...: %u\n", inode.i_block[i]);
+
+	printf("\n\n");
+}
+
+
+// Function to show entries
+static unsigned int read_dir(int fd, const struct ext2_inode *inode, const struct ext2_group_desc *group, char* nomeArquivo)
+{
+	void *block;
+
+	if (S_ISDIR(inode->i_mode)) {
+		struct ext2_dir_entry_2 *entry;
+		unsigned int size = 0;
+
+		if ((block = malloc(block_size)) == NULL) { /* allocate memory for the data block */
+			fprintf(stderr, "Memory error\n");
+			close(fd);
+			exit(1);
+		}
+
+		lseek(fd, BLOCK_OFFSET(inode->i_block[0]), SEEK_SET);
+		read(fd, block, block_size);                /* read block from disk*/
+
+		entry = (struct ext2_dir_entry_2 *) block;  /* first entry in the directory */
+                /* Notice that the list may be terminated with a NULL
+                   entry (entry->inode == NULL)*/
+		while((size < inode->i_size) && entry->inode) {
+			char file_name[EXT2_NAME_LEN+1];
+			memcpy(file_name, entry->name, entry->name_len);
+			file_name[entry->name_len] = 0;     /* append null character to the file name */
+
+			// PARA RETORNAR INODE
+			if((strcmp(nomeArquivo, entry->name)) == 0){
+				return entry->inode;
+			}
+
+			//parametros do cd e ls 
+			printf("%s\n"
+			       "inode: %10u\n"
+				   "Record lenght: %hu\n"
+			       "Name lenght: %d\n"
+				   "File type: %d\n\n",
+					file_name,
+					entry->inode,
+					entry->rec_len,
+					entry->name_len,
+					entry->file_type);
+			
+
+			entry = (void*) entry + entry->rec_len;
+			size += entry->rec_len;
+		}
+
+		free(block);
+	}
+
+	printf("\n\n");
+} /* read_dir() */
+
+
+unsigned int group_number(unsigned int inode, struct ext2_super_block super) {
+	unsigned int group_number = (inode-1) / super.s_inodes_per_group;
+	printf("INODE: %hu\n", inode);
+	printf("blocos: %hu\n", super.s_inodes_per_group);
+	printf("grupo: %hu\n", group_number);
+	return group_number;
 }
 
 
