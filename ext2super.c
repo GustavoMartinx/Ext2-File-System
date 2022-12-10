@@ -100,10 +100,8 @@ void read_super_block(struct ext2_super_block super) {
 	       super.s_first_data_block,
 	       block_size,
 	       super.s_blocks_per_group,
-	       super.s_inodes_per_group,
-	       super.s_creator_os,
-	       super.s_first_ino,          /* first non-reserved inode */
-	       super.s_inode_size);
+		   super.s_inodes_per_group
+	       );    
 		
 	printf("\n\n");
 }
@@ -127,6 +125,10 @@ void read_group_descriptor(struct ext2_group_desc group) {
 	       group.bg_used_dirs_count);    /* directories count */
 
 	printf("\n\n");
+}
+
+void info() {
+	read_super_block();
 }
 
 
@@ -204,6 +206,8 @@ int main(void)
 
 	read_super_block(super);
 
+	/******** TEST INFO **********/
+	info();
 
 
 
