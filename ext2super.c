@@ -234,6 +234,45 @@ unsigned int group_number(unsigned int inode, struct ext2_super_block super) {
 }
 
 
+void read_file(int fd, struct ext2_inode *inode)
+{
+	int size = inode->i_size;
+	char *block = malloc(block_size);
+	lseek(fd, BLOCK_OFFSET(inode->i_block[0]), SEEK_SET);
+	read(fd, block, block_size);
+	for(int i = 0; i < size; i++){
+		printf("%c",block[i]);
+	}
+}
+
+void ls() {
+	// read_dir(int fd, const struct ext2_inode *inode, const struct ext2_group_desc *group, char* nomeArquivo);
+}
+
+void attr(){
+	struct ext2_acl_entry* entry;
+
+	printf("%s\n"
+			"inode: %10u\n"
+			"Record lenght: %hu\n"
+			"Name lenght: %d\n"
+			"File type: %d\n\n",
+			//file_name,
+			entry->acle_size,
+			entry->acle_perms
+			//entry->name_len,
+			//entry->file_type
+			);
+}
+
+/*cd livros
+livros
+inode: 8193
+record lenght: 16
+name lenght: 6
+file type: 2*/
+
+
 
 
 int main(void)
