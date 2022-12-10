@@ -8,20 +8,10 @@
  * ealtieri@hampshire.edu
  */
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include "./ext2_fs.h"
-
-#define BASE_OFFSET 1024                   /* locates beginning of the super block (first group) */
-#define FD_DEVICE "./myext2image.img"      /* the floppy disk device */
-#define BLOCK_OFFSET(block) (BASE_OFFSET + (block - 1) * block_size)
+#include "./utils.h"
 
 static unsigned int block_size = 0;        /* block size (to be calculated) */
-
+   
 
 
 /* Structure of the super block */
@@ -76,38 +66,36 @@ struct ext2_super_block {
 struct ext2_super_block super;
 
 // Function to read super block
-void read_super_block(struct ext2_super_block super) {
+void read_super_block() {
 
-	printf("Reading super-block from device " FD_DEVICE ":\n"
-	       "Inodes count............: %u\n"
-	       "Blocks count............: %u\n"
-	       "Reserved blocks count...: %u\n"
-	       "Free blocks count.......: %u\n"
-	       "Free inodes count.......: %u\n"
-	       "First data block........: %u\n"
-	       "Block size..............: %u\n"
-	       "Blocks per group........: %u\n"
-	       "Inodes per group........: %u\n"
-	       "Creator OS..............: %u\n"
-	       "First non-reserved inode: %u\n"
-	       "Size of inode structure.: %hu\n"
-	       ,
-	       super.s_inodes_count,  
-	       super.s_blocks_count,
-	       super.s_r_blocks_count,     /* reserved blocks count */
-	       super.s_free_blocks_count,
-	       super.s_free_inodes_count,
-	       super.s_first_data_block,
-	       block_size,
-	       super.s_blocks_per_group,
+	printf(
+		   "Volume name.............: %s\n"
+		   "Image size..............: %u bytes\n" //errado (talvez)
+		   "Free space..............: %u KiB\n" //errado
+	       "Free inodes ............: %u\n"
+		   "Free blocks ............: %u\n"
+		   "Block size..............: %u bytes\n"
+		   "Inode size..............: %hu bytes\n"
+		   //"Groups count....:.....: %u\n"
+	       "Groups size.............: %u blocks\n"
+	       "Groups inodes...........: %u inodes\n"
+		   //"Inodetable size.......: %u blocks\n"
+	       ,  
+		   super.s_volume_name, //nome do volume 
+		   (super.s_blocks_count * block_size /* super.s_blocks_per_group*/), //tamanho da imagem
+		   (super.s_free_blocks_count * block_size) / 1024, // espaço livre
+	       super.s_free_inodes_count, //free inodes 
+		   super.s_free_blocks_count, //free blocks
+		   block_size, // tamanho do bloco
+		   super.s_inode_size, //inode size 
+		   super.s_blocks_per_group,
 		   super.s_inodes_per_group
 	       );    
 		
-	printf("\n\n");
 }
 
 
-
+// Function to read group descriptor
 void read_group_descriptor(struct ext2_group_desc group) {
 	printf("Reading first group-descriptor from device " FD_DEVICE ":\n"
 	       "Blocks bitmap block: %u\n"
@@ -115,14 +103,13 @@ void read_group_descriptor(struct ext2_group_desc group) {
 	       "Inodes table block.: %u\n"
 	       "Free blocks count..: %u\n"
 	       "Free inodes count..: %u\n"
-	       "Directories count..: %u\n"
-	       ,
+	       "Directories count..: %u\n",
 	       group.bg_block_bitmap,
 	       group.bg_inode_bitmap,
 	       group.bg_inode_table,
 	       group.bg_free_blocks_count,
 	       group.bg_free_inodes_count,
-	       group.bg_used_dirs_count);    /* directories count */
+	       group.bg_used_dirs_count);    
 
 	printf("\n\n");
 }
@@ -142,7 +129,6 @@ static void read_inode(int fd, int inode_no, const struct ext2_group_desc *group
 
 
 
-
 // Function to read root inode
 void print_read_root_inode(struct ext2_inode inode)
 {
@@ -151,10 +137,10 @@ void print_read_root_inode(struct ext2_inode inode)
 		   "Owner UID: %hu\n"
 		   "Size.....: %u bytes\n"
 		   "Blocks...: %u\n",
-		   inode.i_mode,     /* inode.i_mode */
-		   inode.i_uid,      /* inode.i_mode */
-		   inode.i_size,     /* inode.i_mode */
-		   inode.i_blocks);  /* inode.i_mode */
+		   inode.i_mode,   
+		   inode.i_uid,    
+		   inode.i_size,   
+		   inode.i_blocks);
 
 	for (int i = 0; i < EXT2_N_BLOCKS; i++)
 		if (i < EXT2_NDIR_BLOCKS) /* direct blocks */
@@ -277,27 +263,23 @@ file type: 2*/
 
 int main(void)
 {
-	struct ext2_super_block super;
-	struct ext2_group_desc group;
+	
 	struct ext2_inode inode;
+	struct ext2_group_desc group;
 	int fd;
-	// int i; (i do for de imprimir read root inode)
 
 	/* open floppy device */
-
 	if ((fd = open(FD_DEVICE, O_RDONLY)) < 0) {
 		perror(FD_DEVICE);
 		exit(1);  /* error while opening the floppy device */
 	}
-
-	
-	
 
 
 
 
 
 	/****** read super-block *******/
+	/******************************/
 
 	lseek(fd, BASE_OFFSET, SEEK_SET); 
 	read(fd, &super, sizeof(super));
@@ -308,8 +290,9 @@ int main(void)
 	}
 		
 	block_size = 1024 << super.s_log_block_size;
+	//read_super_block(super);
 
-	read_super_block(super);
+
 
 	/******** TEST INFO **********/
 	info();
@@ -317,10 +300,9 @@ int main(void)
 
 
 	/********* read group descriptor ***********/
-
+	/******************************************/
 	lseek(fd, BASE_OFFSET + block_size, SEEK_SET);
 	read(fd, &group, sizeof(group));
-	//close(fd);
 	
 	read_group_descriptor(group);
 
@@ -329,9 +311,43 @@ int main(void)
 
 	
 	/******** read root inode ********/
+	/********************************/
  	read_inode(fd, 2, &group, &inode);
  
- 	print_read_root_inode(inode);
+ 	//print_read_root_inode(inode);
+
+
+
+	/* show entries in the root directory */
+	/*************************************/
+	read_inode(fd, 2, &group, &inode);  // read inode 2 (root directory)
+	read_dir(fd, &inode, &group, "/");
+
+	
+	
+	/******** TEST LS **********/
+	// ls();
+
+
+	/******** PRINT FILE CONTENT **********/
+	// read_inode(fd, 12, &group, &inode);
+	// read_file(fd, &group, &inode);
+
+
+
+
+	/******** TEST CAT (p/ arq especifico -> não. precisamos do cd) **********/
+	read_inode(fd, 2, &group, &inode);
+	unsigned int entry_inode = read_dir(fd, &inode, &group, "hello.txt");
+	read_inode(fd, entry_inode, &group, &inode);
+	printf("\n\nINODE: %hu\n\n",entry_inode);
+	read_file(fd, &inode);
+
+
+	/************* TEST GETTING GROUP NUMBER *******************/
+	entry_inode = 12289;
+	unsigned int gp_number = group_number(entry_inode, super);
+	printf("%hu\n", gp_number);
 
 
 	close(fd);
