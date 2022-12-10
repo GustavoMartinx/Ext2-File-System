@@ -1,7 +1,3 @@
-super:
-	gcc ext2_fs.h ext2super.c
-	./a.out
-
-dir:
-	gcc ext2_fs.h read_dir.c
+all:
+	gcc ext2_fs.h ext2.c
 	./a.out
