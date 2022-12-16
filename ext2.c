@@ -352,6 +352,12 @@ file type: 2*/
 
 			// PARA RETORNAR INODE
 			if((strcmp(dirName, entry->name)) == 0){
+				if(entry->name != ".." && entry->name != "."){
+					//PUSH(entry->name, &stack);
+				}
+				else if(entry->name == ".."){
+					//POP(&stack);
+				}
 				
 				//parametros do cd 
 				printf("%s\n"
