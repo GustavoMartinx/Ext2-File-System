@@ -270,13 +270,14 @@ void ls(struct ext2_inode *inode, struct ext2_group_desc *group) {
 	printf("\n\n");
 }
 
-void attr(struct ext2_inode *inode, struct ext2_group_desc *group, char *nome, int grupoAtual){
+void attr(struct ext2_inode *inode, struct ext2_group_desc *group, char *arquivoNome, int* currentGroup){
 	struct ext2_inode* entry = (struct ext2_inode*)malloc(sizeof(struct ext2_inode));
 	struct ext2_group_desc *grupoTemp = (struct ext2_group_desc *)malloc(sizeof(struct ext2_group_desc));
-	//unsigned int index = (read_dir(fd, &inode, &group, nomeArquivo)) % super.s_inodes_per_group;
-	//read_inode(index, novoGroup, novoInode);
-	//pega o group_number() e joga para o read inode.
-	//read_inode(index, novoGroup, novoInode);
+	memcpy(entry, inode, sizeof(struct ext2_inode));
+	memcpy(grupoTemp, group, sizeof(struct ext2_group_desc));
+	unsigned int novo_inode = read_dir(fd, inode, group, arquivoNome);
+	change_group(&novo_inode, grupoTemp, currentGroup);
+	read_inode(fd, novo_inode, grupoTemp, entry);
 	/*printf("%s\n"
 			"permissões %hu\t"
 			"uid %hu\t"
@@ -288,18 +289,18 @@ void attr(struct ext2_inode *inode, struct ext2_group_desc *group, char *nome, i
 			entry->acle_tag,
 			entry->acle_tag
 			);*/
-	//printf("%s\n"
-	//		"permissões %hu\t"
-	//		"uid %hu\t"
-	//		"gid %hu\t"
-	//		"tamanho %hu\t"
-	//		"modificado em %hu\t",
-	//		entry->i_mode,
-	//		entry->i_uid,
-	//		entry->i_gid,
-	//		entry->i_size,
-	//		entry->i_mtime
-	//		);
+	printf(
+			"permissões %hu\t"
+			"uid %hu\t"
+			"gid %hu\t"
+			"tamanho %hu\t"
+			"modificado em %d\t",
+			entry->i_mode,
+			entry->i_uid,
+			entry->i_gid,
+			entry->i_size,
+			entry->i_mtime
+			);
 }
 
 void pwd(){
