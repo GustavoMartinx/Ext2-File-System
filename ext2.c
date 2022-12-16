@@ -418,13 +418,57 @@ void chage_group(unsigned int *inode, struct ext2_group_desc *groupToGo, int *cu
 }
 
 
-
-
-
-
-int main()
-{
+char* catch_second_param(char* comando) {
 	
+	char* buff = calloc(50, sizeof(char));
+
+	for(int i = 0; comando[i] != '\0'; i++) {
+		if(comando[i] == ' ') {
+			for(int j = 0; j != '\0'; j++) {
+				buff[j] = comando[++i];
+			}
+			printf("%s", buff);
+			return buff;
+		}
+	}
+}
+
+char* catch_principal_param(char* comando) {
+	
+	char* buff = calloc(50, sizeof(char));
+
+	for(int i = 0; comando[i] != ' '; i++) {
+			
+		buff[i] = comando[i];
+
+		printf("%s", buff);
+		return buff;
+	}
+}
+
+
+
+
+//saber em que grupo estou 
+//olhar se há espaço disponivel 
+//se sim onde alucar o arquivo 
+//criar o arquivo
+//colocar o nome passado 
+//marcar no map de bits 
+//marcar no mapa de inode 
+//tirar do espaço dsponível 
+void touch(int fd, struct ext2_group_desc* group, char* arquivo_nome){
+	group->bg_block_bitmap;		/* Blocks bitmap block */
+	group->bg_inode_bitmap;		/* Inodes bitmap block */
+	group->bg_inode_table;		/* Inodes table block */
+}
+
+
+
+
+
+int main() {
+
 	struct ext2_inode inode;
 	struct ext2_group_desc group;
 	int currentGroup = 0;
@@ -521,11 +565,57 @@ int main()
 	
 
 	/******* TEST CD *****/
-	printf("*************************************************\n");
-	change_directory("livros", &inode, &group, &currentGroup);
+// 	printf("*************************************************\n");
+// 	change_directory("livros", &inode, &group, &currentGroup /*, &stack */);
 
-	change_directory("religiosos", &inode, &group, &currentGroup);
+// 	change_directory("religiosos", &inode, &group, &currentGroup, &stack);
 
+
+	/********** TESTE: TUDO NO SHELL ********/
+	char *fullCommand = calloc(50, sizeof(char));
+	
+	while (1)
+    {
+        printf("shell$ ");
+        fgets(fullCommand, 50, stdin);
+        fullCommand[strcspn(fullCommand, "\n")] = 0;
+
+		// renomear daqui pra cima comando --> supercomando
+
+		// trata primeiro comando (comando)
+		char* comando = calloc(50, sizeof(char));
+		comando = catch_principal_param(fullCommand);
+		printf("\n%s\n", comando);
+
+		//erro: esta pegando apenas a primeira letra.
+
+		// trata secundario (secundario)
+		
+
+        if((strcmp(comando, "ls")) == 0){
+           printf("***** TEST LS ******\n\n");
+	       ls(&inode, &group);
+        }
+
+        else if((strcmp(comando, "info")) == 0){
+            printf("teste");
+            info();
+        }
+
+        else if((strcmp(comando, "cat")) == 0){
+			catch_second_param(comando);
+			
+			read_inode(fd, 2, &group, &inode);
+			unsigned int entry_inode = read_dir(fd, &inode, &group, "hello.txt");
+			read_inode(fd, entry_inode, &group, &inode);
+            cat(fd,&inode);
+        }
+
+        else if((strcmp(comando, "attr")) == 0){
+            // chama attr;
+    	}
+
+	}
 
 
 
