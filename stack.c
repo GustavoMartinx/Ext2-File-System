@@ -1,19 +1,6 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#define TAMANHO_ 1000
-#define LIMITE_ 4000
+#include "utils.h"
 
 typedef char Registro;
-
-typedef struct
-{
-    int  tam; // quantos tem
-    int  lim; // quantos cabem
-    char dado[LIMITE_][TAMANHO_];
-
-} Pilha;
 
 int POP(Pilha*);
 int PUSH(const char*, Pilha*);
@@ -23,18 +10,6 @@ int mostra(Pilha*, const char*);
 Pilha* cria(size_t limite);
 Pilha* destroi(Pilha* pilha);
 
-
-int main(void)
-{
-    Pilha orig = {.tam = 0, .lim = TAMANHO_};
-    PUSH("(const char*)aa[0]", &orig);
-    PUSH("livros", &orig);
-    PUSH("clasicos", &orig);
-    PUSH("(julio", &orig);
-    POP(&orig);
-    mostra(&orig, NULL);
-    return 0;
-}
 
 // tira um cara da pilha, retorna o tamanho
 int POP(Pilha* p)
@@ -60,13 +35,13 @@ int PUSH(const char* val, Pilha* p)
     return p->tam;
 }
 
-int TOP(Pilha* p, Registro* val)
-{
-    if ((p == NULL) || (val == NULL)) return -1;
-    if (p->tam == 0) return -2;
-    strcpy(val, p->dado[p->tam]);
-    return 0;
-}
+// int TOP(Pilha* p, Registro* val)
+// {
+//     if ((p == NULL) || (val == NULL)) return -1;
+//     if (p->tam == 0) return -2;
+//     strcpy(val, p->dado[p->tam]);
+//     return 0;
+// }
 
 int mostra(Pilha* p, const char* tit)
 {
@@ -104,3 +79,43 @@ Pilha* destroi(Pilha* pilha)
     free(pilha);
     return NULL;
 }
+
+/*
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define TAMANHO_ 1000
+#define LIMITE_ 4000
+
+typedef char Registro;
+
+typedef struct
+{
+    int  tam; // quantos tem
+    int  lim; // quantos cabem
+    char dado[LIMITE_][TAMANHO_];
+
+} Pilha;
+
+int POP(Pilha*);
+int PUSH(const char*, Pilha*);
+int TOP(Pilha*, char*);
+
+int mostra(Pilha*, const char*);
+Pilha* cria(size_t limite);
+Pilha* destroi(Pilha* pilha);
+
+int main(void)
+{
+    Pilha orig = {.tam = 0, .lim = TAMANHO_};
+    PUSH("(const char*)aa[0]", &orig);
+    PUSH("livros", &orig);
+    PUSH("clasicos", &orig);
+    PUSH("(julio", &orig);
+    POP(&orig);
+    mostra(&orig, NULL);
+    return 0;
+}
+
+*/
