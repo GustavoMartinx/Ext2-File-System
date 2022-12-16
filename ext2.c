@@ -9,6 +9,7 @@
  */
 
 #include "./utils.h"
+// #include "stack.c"
 
 static unsigned int block_size = 0;        /* block size (to be calculated) */
 struct ext2_super_block super;
@@ -124,7 +125,7 @@ void info() {
 
 
 // Function to read inode
-static void read_inode(int fd, int inode_no, const struct ext2_group_desc *group, struct ext2_inode *inode)
+void read_inode(int fd, int inode_no, const struct ext2_group_desc *group, struct ext2_inode *inode)
 {
 	lseek(fd, BLOCK_OFFSET(group->bg_inode_table) + (inode_no - 1) * sizeof(struct ext2_inode), SEEK_SET);
 	read(fd, inode, sizeof(struct ext2_inode));
@@ -160,7 +161,7 @@ void print_read_root_inode(struct ext2_inode inode)
 
 
 // Function to show entries
-static unsigned int read_dir(int fd, const struct ext2_inode *inode, const struct ext2_group_desc *group, char* nomeArquivo)
+unsigned int read_dir(int fd, const struct ext2_inode *inode, const struct ext2_group_desc *group, char* nomeArquivo)
 {
 	void *block;
 
@@ -204,13 +205,13 @@ static unsigned int read_dir(int fd, const struct ext2_inode *inode, const struc
 
 // Function to get the number of a group
 unsigned int group_number(unsigned int inode, struct ext2_super_block super) {
-	unsigned int group_numbere = (inode-1) / super.s_inodes_per_group;
-	return group_numbere;
+	unsigned int group_number = (inode-1) / super.s_inodes_per_group;
+	return group_number;
 }
 
 
 // Function to print the content of a () file
-void read_file(int fd, struct ext2_inode *inode)
+void cat(int fd, struct ext2_inode *inode)
 {
 	int size = inode->i_size;
 	char *block = malloc(block_size);
@@ -226,7 +227,7 @@ void read_file(int fd, struct ext2_inode *inode)
 void ls(struct ext2_inode *inode, struct ext2_group_desc *group) {
 
 	void *block;
-
+	
 	if (S_ISDIR(inode->i_mode)) {
 		struct ext2_dir_entry_2 *entry;
 		unsigned int size = 0;
@@ -303,21 +304,22 @@ void attr(struct ext2_inode *inode, struct ext2_group_desc *group, char *arquivo
 			);
 }
 
-void pwd(){
-	//mostra(&orig);
+void pwd(Pilha* stack) {
+	//Der exit apagar toda a stack
+	//mostra(&stack);
 }
 
-void change_directory(char* dirName, struct ext2_inode *inode, struct ext2_group_desc *group, int *currentGroup) {
+void change_directory(char* dirName, struct ext2_inode *inode, struct ext2_group_desc *group, int *currentGroup /*, Pilha* stack*/) {
 
 	/*
 	struct ext2_dir_entry_2 *entry;
 	procura o nome do arquivo correspondente, se encontrar coloca na pilha
 	fazer uma inicialização da pilha contendo o nome do diretótio principal???
 	if(nomeArquivo != ".." && nomeArquivo != "."){
-		PUSH(nomeArquivo, &orig);
+		PUSH(nomeArquivo, &stack);
 	}
 	else if(nomeArquivo == ".."){
-		POP(&orig);
+		POP(&stack);
 	} 
 	*/
 
@@ -389,12 +391,13 @@ file type: 2*/
 
 	unsigned int dirNameInode = read_dir(fd, inode, group, dirName);
 
-	chage_group(&dirNameInode, group, currentGroup);
+	change_group(&dirNameInode, group, currentGroup);
 
 	unsigned int index = ((int)dirNameInode) % super.s_inodes_per_group;
 
 	read_inode(fd, index, group, inode);
 
+	// apenas para teste
 	ls(inode, group);
 	
 	
@@ -404,7 +407,7 @@ file type: 2*/
 
 
 
-void chage_group(unsigned int *inode, struct ext2_group_desc *groupToGo, int *currentGroup) {
+void change_group(unsigned int* inode, struct ext2_group_desc* groupToGo, int* currentGroup) {
 
 	unsigned int block_group = ((*inode) - 1) / super.s_inodes_per_group; // Cálculo do grupo do Inode
 
@@ -473,52 +476,55 @@ int main() {
 	struct ext2_group_desc group;
 	int currentGroup = 0;
 	
+	/*Create stack */
+	// Pilha stack = {.tam = 0, .lim = TAMANHO_};
+	
 
-	/* open floppy device */
-	if ((fd = open(FD_DEVICE, O_RDONLY)) < 0) {
-		perror(FD_DEVICE);
-		exit(1);  /* error while opening the floppy device */
-	}
+ 	/* open floppy device */
+ 	if ((fd = open(FD_DEVICE, O_RDONLY)) < 0) {
+ 		perror(FD_DEVICE);
+ 		exit(1);  /* error while opening the floppy device */
+ 	}
 
 
 
-	/****** read super-block *******/
-	/******************************/
+// 	/****** read super-block *******/
+// 	/******************************/
 
-	lseek(fd, BASE_OFFSET, SEEK_SET); 
-	read(fd, &super, sizeof(super));
+ 	lseek(fd, BASE_OFFSET, SEEK_SET); 
+ 	read(fd, &super, sizeof(super));
 
-	if (super.s_magic != EXT2_SUPER_MAGIC) {
-		fprintf(stderr, "Not a Ext2 filesystem\n");
-		exit(1);
-	}
+ 	if (super.s_magic != EXT2_SUPER_MAGIC) {
+ 		fprintf(stderr, "Not a Ext2 filesystem\n");
+ 		exit(1);
+ 	}
 		
-	block_size = 1024 << super.s_log_block_size;
-	//read_super_block(super);
+ 	block_size = 1024 << super.s_log_block_size;
+ 	//read_super_block(super);
 
 
 
-	/******** TEST INFO **********/
-	info();
+// 	/******** TEST INFO **********/
+// 	info();
 
 
 
-	/********* read group descriptor ***********/
-	/******************************************/
+// 	/********* read group descriptor ***********/
+// 	/******************************************/
 	lseek(fd, BASE_OFFSET + block_size, SEEK_SET);
-	read(fd, &group, sizeof(group));
+ 	read(fd, &group, sizeof(group));
 	
-	read_group_descriptor(group);
+// 	read_group_descriptor(group);
 
 
 
 
 	
-	/******** read root inode ********/
-	/********************************/
- 	read_inode(fd, 2, &group, &inode);
+ 	/******** read root inode ********/
+ 	/********************************/
+	// read_inode(fd, 2, &group, &inode);
  
- 	//print_read_root_inode(inode);
+  	//print_read_root_inode(inode);
 
 
 
@@ -530,13 +536,13 @@ int main() {
 	
 	
 	/******** TEST LS **********/
-	// printf("***** TEST LS ******\n\n");
-	// ls(&inode, &group);
+//	printf("***** TEST LS ******\n\n");
+	//// ls(&inode, &group); ////
 
 
-	/******** PRINT FILE CONTENT **********/
-	// read_inode(fd, 12, &group, &inode);
-	// read_file(fd, &group, &inode);
+ 	/******** PRINT FILE CONTENT **********/
+ 	// read_inode(fd, 12, &group, &inode);
+ 	// cat(fd, &group, &inode);
 
 
 
@@ -544,27 +550,27 @@ int main() {
 	/******** TEST CAT (p/ arq especifico -> não. precisamos do cd) **********/
 //	read_inode(fd, 2, &group, &inode);
 //	unsigned int entry_inode = read_dir(fd, &inode, &group, "hello.txt");
-//
+
 //	read_inode(fd, entry_inode, &group, &inode);
-//	read_file(fd, &inode);
-//
-//
+//	cat(fd, &inode);
+
+
 //	/************* TEST GETTING GROUP NUMBER *******************/
 //	entry_inode = 12289;  // documentos
 //	unsigned int gp_number = group_number(entry_inode, super);
 //	printf("%hu\n", gp_number);
-//
-//
+
+
 //	/************ TEST ATTR **************/
 //	read_inode(fd, 2, &group, &inode);
 //	unsigned int entry_inod = read_dir(fd, &inode, &group, "hello.txt");
 
 
-	/********* TEST CHANGE GROUP ********/
-	// chageGroup(&inode, &groupToGo, &currentGroup);
+ 	/********* TEST CHANGE GROUP ********/
+ 	// changeGroup(&inode, &groupToGo, &currentGroup);
 	
 
-	/******* TEST CD *****/
+ 	/******* TEST CD *****/
 // 	printf("*************************************************\n");
 // 	change_directory("livros", &inode, &group, &currentGroup /*, &stack */);
 
