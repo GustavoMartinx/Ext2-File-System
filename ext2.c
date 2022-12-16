@@ -370,22 +370,31 @@ void change_group(unsigned int* inode, struct ext2_group_desc* groupToGo, int* c
 	}
 }
 
-
+// Separa segundo comando do input completo
 char* catch_second_param(char* comando) {
-	
-	char* buff = calloc(50, sizeof(char));
 
-	for(int i = 0; comando[i] != '\0'; i++) {
-		if(comando[i] == ' ') {
-			for(int j = 0; j != '\0'; j++) {
-				buff[j] = comando[++i];
-			}
-			printf("%s", buff);
-			return buff;
+	if(strchr(comando, ' ') != NULL) {
+
+		char* forward_space_position = calloc(50, sizeof(char));
+		forward_space_position = strchr(comando, ' ');  // retorna o restante da string a partir de onde estiver o char ' ' (espaço).
+
+		// printf("space position content(com spaco):%s\n", forward_space_position); // conteúdo do segundo parâmetro com um espaço na primeira posição
+
+		// To remove the space:
+		// moving each position backward
+		for(int j = 0; forward_space_position[j+1] != '\0'; j++) {
+			forward_space_position[j] = forward_space_position[j+1];
 		}
+		
+		// putting '\0' in last position of forward_space_position
+		int second_param_len = strlen(forward_space_position);
+		forward_space_position[second_param_len - 1] = '\0';
+
+		return forward_space_position;
 	}
 }
 
+// Separa primeiro/principal comando do input completo
 char* catch_principal_param(char* comando) {
 	
 	char* buff = calloc(50, sizeof(char));
@@ -393,10 +402,9 @@ char* catch_principal_param(char* comando) {
 	for(int i = 0; comando[i] != ' '; i++) {
 			
 		buff[i] = comando[i];
-
-		printf("%s", buff);
-		return buff;
 	}
+
+	return buff;
 }
 
 
@@ -533,41 +541,52 @@ int main() {
 	while (1)
     {
         printf("shell$ ");
-        fgets(fullCommand, 50, stdin);
-        fullCommand[strcspn(fullCommand, "\n")] = 0;
 
-		// renomear daqui pra cima comando --> supercomando
+		fgets(fullCommand, 50, stdin);  // Captura comando completo pelo shell. Ex.: cat fileName
+    	fullCommand[strcspn(fullCommand, "\n")] = 0;
 
-		// trata primeiro comando (comando)
+		// Alocações para comando principal e seu parâmetro (se houver)
 		char* comando = calloc(50, sizeof(char));
-		comando = catch_principal_param(fullCommand);
-		printf("\n%s\n", comando);
+		char* second_param = calloc(50, sizeof(char));
+		
+		if(strchr(fullCommand, ' ') != NULL) {
+			
+			// Captura comando principal (comando) 		  Ex.: cat
+			comando = catch_principal_param(fullCommand);
+			// printf("\ncomando principal: %s\n", comando);
 
-		//erro: esta pegando apenas a primeira letra.
+			// Captura segundo comando (second_param)     Ex.: fileName
+			second_param = catch_second_param(fullCommand);
+			// printf("\n segundo param la fora: %s\n", second_param);
 
-		// trata secundario (secundario)
+		} else if(strchr(fullCommand, ' ') == NULL) {
+			
+			// Captura comandos compostos por apenas uma palavra. Ex.: info
+			strcpy(comando, fullCommand);
+		}
 		
 
-        if((strcmp(comando, "ls")) == 0){
+		/****** Comparações: entrada == comando esperado  ******/
+
+        if((strcmp(comando, "ls")) == 0) {
            printf("***** TEST LS ******\n\n");
 	       ls(&inode, &group);
         }
 
-        else if((strcmp(comando, "info")) == 0){
+        else if((strcmp(comando, "info")) == 0) {
             printf("teste");
             info();
         }
 
-        else if((strcmp(comando, "cat")) == 0){
-			catch_second_param(comando);
-			
+        else if((strcmp(comando, "cat")) == 0) {
+
 			read_inode(fd, 2, &group, &inode);
-			unsigned int entry_inode = read_dir(fd, &inode, &group, "hello.txt");
+			unsigned int entry_inode = read_dir(fd, &inode, &group, second_param);
 			read_inode(fd, entry_inode, &group, &inode);
             cat(fd,&inode);
         }
 
-        else if((strcmp(comando, "attr")) == 0){
+        else if((strcmp(comando, "attr")) == 0) {
             // chama attr;
     	}
 
