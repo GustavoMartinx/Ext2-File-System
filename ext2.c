@@ -27,8 +27,8 @@ int PUSH(const char* val, Pilha* p)
 int POP(Pilha* p)
 {
     if (p == NULL) return -1;
-    if (p->tam == 0) { //não sei se funciona 
-        PUSH("/", p);
+    if (p->tam == 0) {
+        // PUSH("/", p);
         return -2;
     }
     p->tam -= 1;
@@ -56,12 +56,13 @@ int mostra(Pilha* p, const char* tit)
     if (p->tam == 0)
     {
         //printf("Pilha VAZIA (cap:%d):\n", p->lim);
+		printf("/");
         return 0;
     }
     //printf("%d elementos (cap:%d):\n", p->tam, p->lim);
     for (int i = 1; i < p->tam; i += 1)
         printf("/%s", p->dado[i]);
-    printf("/%s\n\n", p->dado[p->tam]);
+    printf("/%s", p->dado[p->tam]);
     return 0;
 }
 
@@ -195,7 +196,7 @@ unsigned int read_dir(int fd, const struct ext2_inode *inode, const struct ext2_
 		read(fd, block, block_size);                /* read block from disk */
 
 		entry = (struct ext2_dir_entry_2 *) block;  /* first entry in the directory */
-
+		
 		while((size < inode->i_size) && entry->inode) {
 
 			char file_name[EXT2_NAME_LEN+1];
@@ -440,6 +441,7 @@ void attr(struct ext2_inode *inode, struct ext2_group_desc *group, char *arquivo
 void pwd(Pilha* stack) {
 	//Der exit apagar toda a stack
 	mostra(stack, NULL);
+	printf("\n");
 }
 
 void change_directory(char* dirName, struct ext2_inode *inode, struct ext2_group_desc *group, int *currentGroup, Pilha* stack) {
@@ -697,7 +699,10 @@ int main() {
 	while (1)
     {
 
-        printf("[/%s]$> ",diretorio);
+        //printf("[/%s]$> ",diretorio);
+		printf("[");
+		mostra(&stack, NULL);
+		printf("]$> ");
 
 		fgets(fullCommand, 50, stdin);  // Captura comando completo pelo shell. Ex.: cat fileName
     	fullCommand[strcspn(fullCommand, "\n")] = 0;
