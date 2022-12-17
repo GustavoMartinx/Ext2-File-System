@@ -75,7 +75,7 @@ void read_super_block();
 void read_group_descriptor(struct ext2_group_desc group);
 void read_inode(int fd, int inode_no, const struct ext2_group_desc *group, struct ext2_inode *inode);
 void print_read_root_inode(struct ext2_inode inode);
-int read_dir(int fd, const struct ext2_inode *inode, const struct ext2_group_desc *group, char* nomeArquivo);
+unsigned int read_dir(int fd, const struct ext2_inode *inode, const struct ext2_group_desc *group, char* nomeArquivo);
 //unsigned int group_number(unsigned int inode, struct ext2_super_block super);
 void cat(int fd, struct ext2_inode *inode, struct ext2_group_desc *group, char *arquivoNome, int *currentGroup);
 void change_group(unsigned int *inode, struct ext2_group_desc *groupToGo, int *currentGroup);
