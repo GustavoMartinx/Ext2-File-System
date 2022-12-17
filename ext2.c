@@ -6,6 +6,18 @@ static unsigned int block_size = 0;        /* block size (to be calculated) */
 struct ext2_super_block super;
 int fd;
 
+/*Alterar depois???*/
+#define EXT2_S_IRUSR 0x0100 // user read
+#define EXT2_S_IWUSR 0x0080 // user write
+#define EXT2_S_IXUSR 0x0040 // user execute
+#define EXT2_S_IRGRP 0x0020 // group read
+#define EXT2_S_IWGRP 0x0010 // group write
+#define EXT2_S_IXGRP 0x0008 // group execute
+#define EXT2_S_IROTH 0x0004 // others read
+#define EXT2_S_IWOTH 0x0002 // others write
+#define EXT2_S_IXOTH 0x0001 // others execute
+
+
 /******* Pilha **********/
 
 // Insere um elemento/diretório na pilha, retorna o tamanho
@@ -183,6 +195,7 @@ unsigned int read_dir(int fd, const struct ext2_inode *inode, const struct ext2_
 	void *block;
 
 	if (S_ISDIR(inode->i_mode)) {
+		// printf("QUERO SABER SE ALFABETO ENTRA AQUI");
 		struct ext2_dir_entry_2 *entry;
 		unsigned int size = 0;
 
@@ -204,14 +217,12 @@ unsigned int read_dir(int fd, const struct ext2_inode *inode, const struct ext2_
 			file_name[entry->name_len] = 0;     	/* append null character to the file name */
 
 			// PARA RETORNAR INODE
-			if((strcmp(nomeArquivo, entry->name)) == 0){
-				printf("\nentry->inode: %hu\n", entry->inode);
+			if((strcmp(nomeArquivo, file_name)) == 0) {
 				return entry->inode;
-				//break;
 			}
 			
 			// Iteration
-			entry = (void*) entry + entry->rec_len;  // casting
+			entry = (void*) entry + entry->rec_len;
 			size += entry->rec_len;
 		}
 
@@ -242,7 +253,7 @@ void cat(int fd, struct ext2_inode *inode, struct ext2_group_desc *group, char *
 	memcpy(inodeEntryTemp, inode, sizeof(struct ext2_inode));
 	unsigned int inodeRetorno = read_dir(fd, inodeEntryTemp, grupoTemp, arquivoNome);
 	
-	// printf("\ninodeRetorno: %u\n", inodeRetorno);
+	printf("\ninodeRetorno: %u\n", inodeRetorno);
 
 	change_group(&inodeRetorno, grupoTemp, currentGroup);
 
@@ -412,30 +423,130 @@ void ls(struct ext2_inode *inode, struct ext2_group_desc *group) {
 }
 
 void attr(struct ext2_inode *inode, struct ext2_group_desc *group, char *arquivoNome, int* currentGroup){
+
 	struct ext2_inode* entry = (struct ext2_inode*)malloc(sizeof(struct ext2_inode));
 	struct ext2_group_desc *grupoTemp = (struct ext2_group_desc *)malloc(sizeof(struct ext2_group_desc));
+	
 	memcpy(entry, inode, sizeof(struct ext2_inode));
 	memcpy(grupoTemp, group, sizeof(struct ext2_group_desc));
-	unsigned int inodeRetorno = read_dir(fd, inode, group, arquivoNome);
+	
+	unsigned int inodeRetorno = read_dir(fd, entry, grupoTemp, arquivoNome);
+	
 	change_group(&inodeRetorno, grupoTemp, currentGroup);
-	read_inode(fd, inodeRetorno, grupoTemp, entry);
+	
+	unsigned int index = inodeRetorno % super.s_inodes_per_group;
+	
+	read_inode(fd, index, grupoTemp, entry);
+	
+	/*verificar se é um arquivo ou um diretorio*/
+	char fileOrDir;
+	if(S_ISDIR(entry->i_mode)){
+		fileOrDir = 'd';
+	}else {
+		fileOrDir = 'f';
+	}
+
+	/*verificar as permisões do usuario*/
+	char uRead; 
+	char uWrite;
+	char uExec;
+	if((entry->i_mode) & (EXT2_S_IRUSR)){
+		uRead = 'r';
+	} else{
+		uRead = '-';
+	}
+	if ((entry->i_mode) & (EXT2_S_IWUSR)){
+		uWrite = 'w';
+	}else{
+		uWrite = '-';
+	}
+	if ((entry->i_mode) & (EXT2_S_IXUSR)){
+		uExec = 'x';
+	}else{
+		uExec = '-';
+	}
+
+	/*verificar as permisões do grupo*/
+	char gRead; 
+	char gWrite;
+	char gExec;
+
+	if ((entry->i_mode) & (EXT2_S_IRGRP)){
+		gRead = 'r';
+	}else{
+		gRead = '-';
+	}
+	if ((entry->i_mode) & (EXT2_S_IWGRP)){
+		gWrite = 'w';
+	}else{
+		gWrite = '-';
+	}
+	if ((entry->i_mode) & (EXT2_S_IXGRP)){
+		gExec = 'x';
+	}else{
+		gExec = '-';
+	}
+
+	/*verificar as permisões do grupo*/
+	char oRead; 
+	char oWrite;
+	char oExec;
+	if ((entry->i_mode) & (EXT2_S_IROTH)){
+		oRead = 'r';
+	}else{
+		oRead = '-';
+	}
+	if ((entry->i_mode) & (EXT2_S_IWOTH))
+		oWrite = 'w';
+	else
+		oWrite = '-';
+	if ((entry->i_mode) & (EXT2_S_IXOTH))
+		oExec = 'x';
+	else
+		oExec = '-';
+	
 	printf(
 			"permissões\t"
 			"uid \t"
 			"gid \t"
 			"tamanho \t"
 			"modificado em\t\n"
-			"%hu\t\t"
-			"%hu\t"
-			"%hu\t"
-			"%hu\t\t"
-			"%d\t\t",
-			entry->i_mode,
+			//"%hu\t\t"
+			"%c"
+			"%c"
+			"%c"
+			"%c"
+			"%c"
+			"%c"
+			"%c"
+			"%c"
+			"%c"
+			"%c\t"
+			"%d\t"
+			"%d ",
+			//"%hu\t\t"
+			//"%d\t\t\n",
+			fileOrDir,
+			uRead,
+			uWrite,
+			uExec,
+			gRead,
+			gWrite,
+			gExec,
+			oRead,
+			oWrite,
+			oExec,
 			entry->i_uid,
-			entry->i_gid,
-			entry->i_size,
-			entry->i_mtime
+			entry->i_gid
+			//entry->i_size,
+			//entry->i_mtime
 			);
+		/*Colocar a unidade correta*/
+	if (entry->i_size > 1024){
+		printf("   %.1f KiB", (((float)entry->i_size) / 1024));
+	}else{
+		printf("    %d B ", (entry->i_size));
+	}
 }
 
 void pwd(Pilha* stack) {
@@ -469,9 +580,9 @@ void change_directory(char* dirName, struct ext2_inode *inode, struct ext2_group
 			file_name[entry->name_len] = 0;     /* append null character to the file name */
 
 			// PARA RETORNAR INODE
-			if((strcmp(dirName, entry->name)) == 0){
+			if((strcmp(dirName, file_name)) == 0){
 				// printf("entry->name: [%s]\n", entry->name);
-				if(strcmp(entry->name, "..") != 0){
+				if((strcmp(entry->name, "..") != 0) && (strcmp(entry->name, ".") != 0)){
 					PUSH(entry->name, stack);
 				}
 				else if(strcmp(entry->name, "..") == 0){
@@ -533,10 +644,8 @@ char* catch_second_param(char* comando) {
 
 	if(strchr(comando, ' ') != NULL) {
 
-		char* forward_space_position = calloc(50, sizeof(char));
+		char* forward_space_position = calloc(100, sizeof(char));
 		forward_space_position = strchr(comando, ' ');  // retorna o restante da string a partir de onde estiver o char ' ' (espaço).
-
-		// printf("space position content(com spaco):%s\n", forward_space_position); // conteúdo do segundo parâmetro com um espaço na primeira posição
 
 		// To remove the space:
 		// moving each position backward
@@ -555,7 +664,7 @@ char* catch_second_param(char* comando) {
 // Separa primeiro/principal comando do input completo
 char* catch_principal_param(char* comando) {
 	
-	char* buff = calloc(50, sizeof(char));
+	char* buff = calloc(100, sizeof(char));
 
 	for(int i = 0; comando[i] != ' '; i++) {
 			
@@ -695,7 +804,7 @@ int main() {
 
 	/********** TESTE: TUDO NO SHELL ********/
 	char* diretorio = calloc(50, sizeof(char));
-	char *fullCommand = calloc(50, sizeof(char));
+	char *fullCommand = calloc(100, sizeof(char));
 	while (1)
     {
 
@@ -704,12 +813,12 @@ int main() {
 		mostra(&stack, NULL);
 		printf("]$> ");
 
-		fgets(fullCommand, 50, stdin);  // Captura comando completo pelo shell. Ex.: cat fileName
+		fgets(fullCommand, 100, stdin);  // Captura comando completo pelo shell. Ex.: cat fileName
     	fullCommand[strcspn(fullCommand, "\n")] = 0;
 
 		// Alocações para comando principal e seu parâmetro (se houver)
-		char* comando = calloc(50, sizeof(char));
-		char* second_param = calloc(50, sizeof(char));
+		char* comando = calloc(100, sizeof(char));
+		char* second_param = calloc(100, sizeof(char));
 		second_param = "NULL";
 		
 		if(strchr(fullCommand, ' ') != NULL) {
