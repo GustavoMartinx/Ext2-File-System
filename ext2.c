@@ -1,15 +1,6 @@
-/*https://pt.stackoverflow.com/questions/285713/como-inserir-na-pilha-de-dados-uma-string
- * ext2super.c
- *
- * Reads the super-block from a Ext2 floppy disk.
- *
- * Questions?
- * Emanuele Altieri
- * ealtieri@hampshire.edu
- */
+//Autores: AmandaFerrari, Catarine Cruz e Gustavo Zanzin.
 
 #include "./utils.h"
-// #include "stack.c"
 
 static unsigned int block_size = 0;        /* block size (to be calculated) */
 struct ext2_super_block super;
@@ -110,7 +101,7 @@ void read_super_block() {
 	       ,  
 		   super.s_volume_name, //nome do volume 
 		   (super.s_blocks_count * block_size /* super.s_blocks_per_group*/), //tamanho da imagem
-		   (super.s_free_blocks_count * block_size) / 1024, // espaço livre //bug???
+		   ((super.s_free_blocks_count - super.s_r_blocks_count) * block_size) / 1024, // espaço livre //bug???
 	       super.s_free_inodes_count, //free inodes 
 		   super.s_free_blocks_count, //free blocks
 		   block_size, // tamanho do bloco
@@ -186,7 +177,7 @@ void print_read_root_inode(struct ext2_inode inode)
 
 
 // Function to show entries
-unsigned int read_dir(int fd, const struct ext2_inode *inode, const struct ext2_group_desc *group, char* nomeArquivo)
+int read_dir(int fd, const struct ext2_inode *inode, const struct ext2_group_desc *group, char* nomeArquivo)
 {
 	void *block;
 
@@ -213,7 +204,9 @@ unsigned int read_dir(int fd, const struct ext2_inode *inode, const struct ext2_
 
 			// PARA RETORNAR INODE
 			if((strcmp(nomeArquivo, entry->name)) == 0){
+				printf("\nentry->inode: %hu\n", entry->inode);
 				return entry->inode;
+				//break;
 			}
 			
 			// Iteration
@@ -225,7 +218,10 @@ unsigned int read_dir(int fd, const struct ext2_inode *inode, const struct ext2_
 	}
 
 	printf("\n\n");
-} /* read_dir() */
+	
+	//********TESTE *********
+	// return 1;
+} 
 
 
 // Function to get the number of a group
@@ -235,18 +231,137 @@ unsigned int group_number(unsigned int inode, struct ext2_super_block super) {
 }
 
 
-// Function to print the content of a () file
-void cat(int fd, struct ext2_inode *inode)
-{
-	int size = inode->i_size;
-	char *block = malloc(block_size);
+// Function to print the content of a file
+void cat(int fd, struct ext2_inode *inode, struct ext2_group_desc *group, char *arquivoNome, int *currentGroup)
+{	
+	struct ext2_group_desc *grupoTemp = (struct ext2_group_desc *)malloc(sizeof(struct ext2_group_desc));
+	struct ext2_inode* inodeEntryTemp = (struct ext2_inode*)malloc(sizeof(struct ext2_inode));
+	
+	memcpy(grupoTemp, group, sizeof(struct ext2_group_desc));
+	memcpy(inodeEntryTemp, inode, sizeof(struct ext2_inode));
+	unsigned int inodeRetorno = read_dir(fd, inodeEntryTemp, grupoTemp, arquivoNome);
 
-	lseek(fd, BLOCK_OFFSET(inode->i_block[0]), SEEK_SET);
+	// novo_inode = 12;
+
+	printf("\nNOVO_INODE: %d\n", inodeRetorno);
+
+	change_group(&inodeRetorno, grupoTemp, currentGroup);
+
+	unsigned int index = inodeRetorno % super.s_inodes_per_group;
+	
+	read_inode(fd, index, grupoTemp, inodeEntryTemp);
+	// read_dir(fd, novo_inode, grupoTemp, arquivoNome);
+	
+
+	char *block = (char*)malloc(sizeof(char)*block_size);
+
+	lseek(fd, BLOCK_OFFSET(inodeEntryTemp->i_block[0]), SEEK_SET);
 	read(fd, block, block_size);
 
-	for(int i = 0; i < size; i++){
-		printf("%c",block[i]);
+	int arqSize = inodeEntryTemp->i_size;
+	
+	int singleIndirection[256];
+	int doubleIndirection[256];
+
+	printf("ARQ SIZE: %d ", arqSize);
+
+	// Percorrendo pelos blocos de dados sem indireção
+	for(int i = 0; i < 12; i++) {
+
+		lseek(fd, BLOCK_OFFSET(inodeEntryTemp->i_block[i]), SEEK_SET);
+		read(fd, block, block_size); // Lê bloco i em block
+		
+		// Exibindo conteúdo do primeiro bloco
+		for(int i = 0; i < 1024; i++) {
+			printf("%c", block[i]);
+			
+			arqSize = arqSize - sizeof(char); // Quantidade de dados restantes
+
+			if(arqSize <= 0) {
+				break;
+			}
+		}
+		if(arqSize <= 0) {
+			break;
+		}
 	}
+
+	// Se após os blocos sem indireção ainda existirem dados,
+	// percorre o bloco 12 (uma indireção)
+	if(arqSize > 0) {
+		
+		lseek(fd, BLOCK_OFFSET(inodeEntryTemp->i_block[12]), SEEK_SET);
+		read(fd, singleIndirection, block_size);
+		
+		for(int i = 0; i < 256; i++) {
+			
+			lseek(fd, BLOCK_OFFSET(singleIndirection[i]), SEEK_SET);
+			read(fd, block, block_size);
+
+			for(int j = 0; j < 1024; j++) {
+				
+				printf("%c", block[j]);
+				arqSize = arqSize - 1;
+				
+				if (arqSize <= 0) {
+					break;
+				}
+			}
+			if (arqSize <= 0) {
+				break;
+			}
+		}
+	}
+
+	// Se depois dos blocos com uma indireção ainda existirem dados,
+	// percorre o bloco 13 (dupla indireção)
+	if(arqSize > 0){
+
+		lseek(fd, BLOCK_OFFSET(inodeEntryTemp->i_block[13]), SEEK_SET);
+		read(fd, doubleIndirection, block_size);
+
+		for(int i = 0; i < 256; i++){
+			
+			//não entendi
+			if(arqSize <= 0){
+				break;
+			}
+
+			lseek(fd, BLOCK_OFFSET(doubleIndirection[i]), SEEK_SET);
+			read(fd, singleIndirection, block_size);
+
+			for(int j = 0; j < 256; j++) {
+				
+				if (arqSize <= 0){
+					break;
+				}
+
+				lseek(fd, BLOCK_OFFSET(singleIndirection[j]), SEEK_SET);
+				read(fd, block, block_size);
+
+				for(int k = 0; k < 1024; k++){
+					
+					printf("%c", block[k]);
+					
+					arqSize = arqSize - 1;
+					
+					if (arqSize <= 0){
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	// unsigned int entry_inode = read_dir(fd, &inode, &group, second_param);
+
+	// read_inode(fd, entry_inode, &group, &inode);
+
+	// printf("SDSDS\n");
+	free(block);
+	free(grupoTemp);
+	free(inodeEntryTemp);
+
 }
 
 void ls(struct ext2_inode *inode, struct ext2_group_desc *group) {
@@ -301,26 +416,20 @@ void attr(struct ext2_inode *inode, struct ext2_group_desc *group, char *arquivo
 	struct ext2_group_desc *grupoTemp = (struct ext2_group_desc *)malloc(sizeof(struct ext2_group_desc));
 	memcpy(entry, inode, sizeof(struct ext2_inode));
 	memcpy(grupoTemp, group, sizeof(struct ext2_group_desc));
-	unsigned int novo_inode = read_dir(fd, inode, group, arquivoNome);
-	change_group(&novo_inode, grupoTemp, currentGroup);
-	read_inode(fd, novo_inode, grupoTemp, entry);
-	/*printf("%s\n"
-			"permissões %hu\t"
-			"uid %hu\t"
-			"gid %hu\t"
-			"tamanho %u\t",
-			//file_name,
-			entry->acle_size,
-			entry->acle_perms,
-			entry->acle_tag,
-			entry->acle_tag
-			);*/
+	unsigned int inodeRetorno = read_dir(fd, inode, group, arquivoNome);
+	change_group(&inodeRetorno, grupoTemp, currentGroup);
+	read_inode(fd, inodeRetorno, grupoTemp, entry);
 	printf(
-			"permissões %hu\t"
-			"uid %hu\t"
-			"gid %hu\t"
-			"tamanho %hu\t"
-			"modificado em %d\t",
+			"permissões\t"
+			"uid \t"
+			"gid \t"
+			"tamanho \t"
+			"modificado em\t\n"
+			"%hu\t\t"
+			"%hu\t"
+			"%hu\t"
+			"%hu\t\t"
+			"%d\t\t",
 			entry->i_mode,
 			entry->i_uid,
 			entry->i_gid,
@@ -331,30 +440,10 @@ void attr(struct ext2_inode *inode, struct ext2_group_desc *group, char *arquivo
 
 void pwd(Pilha* stack) {
 	//Der exit apagar toda a stack
-	//mostra(&stack);
+	mostra(stack, NULL);
 }
 
-void change_directory(char* dirName, struct ext2_inode *inode, struct ext2_group_desc *group, int *currentGroup /*, Pilha* stack*/) {
-
-	/*
-	struct ext2_dir_entry_2 *entry;
-	procura o nome do arquivo correspondente, se encontrar coloca na pilha
-	fazer uma inicialização da pilha contendo o nome do diretótio principal???
-	if(nomeArquivo != ".." && nomeArquivo != "."){
-		PUSH(nomeArquivo, &stack);
-	}
-	else if(nomeArquivo == ".."){
-		POP(&stack);
-	} 
-	*/
-
-/*cd livros
-livros
-inode: 8193
-record lenght: 16
-name lenght: 6
-file type: 2*/
-
+void change_directory(char* dirName, struct ext2_inode *inode, struct ext2_group_desc *group, int *currentGroup, Pilha* stack) {
 
 	void *block;
 
@@ -380,11 +469,12 @@ file type: 2*/
 
 			// PARA RETORNAR INODE
 			if((strcmp(dirName, entry->name)) == 0){
-				if(entry->name != ".." && entry->name != "."){
-					//PUSH(entry->name, &stack);
+				printf("entry->name: [%s]\n", entry->name);
+				if(strcmp(entry->name, "..") != 0){
+					PUSH(entry->name, stack);
 				}
-				else if(entry->name == ".."){
-					//POP(&stack);
+				else if(strcmp(entry->name, "..") == 0){
+					POP(stack);
 				}
 				
 				//parametros do cd 
@@ -410,20 +500,13 @@ file type: 2*/
 	
 	printf("\n\n");
 
+	unsigned int inodeRetorno = read_dir(fd, inode, group, dirName);
 
+	change_group(&inodeRetorno, group, currentGroup);
 
-	read_inode(fd, 2, group, inode);
-
-	unsigned int dirNameInode = read_dir(fd, inode, group, dirName);
-
-	change_group(&dirNameInode, group, currentGroup);
-
-	unsigned int index = ((int)dirNameInode) % super.s_inodes_per_group;
+	unsigned int index = ((int)inodeRetorno) % super.s_inodes_per_group;
 
 	read_inode(fd, index, group, inode);
-
-	// apenas para teste
-	ls(inode, group);
 	
 	
 }
@@ -432,8 +515,7 @@ file type: 2*/
 
 
 
-void change_group(unsigned int* inode, struct ext2_group_desc* groupToGo, int* currentGroup) {
-
+void change_group(unsigned int* inode, struct ext2_group_desc* groupToGo, int* currentGroup) {	
 	unsigned int block_group = ((*inode) - 1) / super.s_inodes_per_group; // Cálculo do grupo do Inode
 
 	if (block_group != (*currentGroup))
@@ -510,7 +592,7 @@ int main() {
 	int currentGroup = 0;
 	
 	/*Create stack */
-	// Pilha stack = {.tam = 0, .lim = TAMANHO_};
+	 Pilha stack = {.tam = 0, .lim = TAMANHO_};
 	
 
  	/* open floppy device */
@@ -611,11 +693,12 @@ int main() {
 
 
 	/********** TESTE: TUDO NO SHELL ********/
+	char* diretorio = calloc(50, sizeof(char));
 	char *fullCommand = calloc(50, sizeof(char));
-	
 	while (1)
     {
-        printf("shell$ ");
+
+        printf("[/%s]$> ",diretorio);
 
 		fgets(fullCommand, 50, stdin);  // Captura comando completo pelo shell. Ex.: cat fileName
     	fullCommand[strcspn(fullCommand, "\n")] = 0;
@@ -623,6 +706,7 @@ int main() {
 		// Alocações para comando principal e seu parâmetro (se houver)
 		char* comando = calloc(50, sizeof(char));
 		char* second_param = calloc(50, sizeof(char));
+		second_param = "NULL";
 		
 		if(strchr(fullCommand, ' ') != NULL) {
 			
@@ -644,29 +728,59 @@ int main() {
 		/****** Comparações: entrada == comando esperado  ******/
 
         if((strcmp(comando, "ls")) == 0) {
-           printf("***** TEST LS ******\n\n");
 	       ls(&inode, &group);
         }
 
         else if((strcmp(comando, "info")) == 0) {
-            printf("teste");
             info();
         }
 
         else if((strcmp(comando, "cat")) == 0) {
-
-			read_inode(fd, 2, &group, &inode);
+			// verificação se o arquivo solicitado existe naquele dir
+			// pré-processamento de onde estará inode/group daquele arquivo (procurar apenas no dir em que estamos naquele momento)
+			//read_inode(fd, 2, &group, &inode);
 			unsigned int entry_inode = read_dir(fd, &inode, &group, second_param);
+
+			// ********* TESTE TRATAMENTO DE ERROS **********
+			// if(strcmp(second_param, "NULL") == 0){
+			// 	printf("invalid sintax.\n");
+			// }
+
+
+			// if(entry_inode == 1 && (strcmp(second_param, "NULL") != 0)){
+			// 	printf("directory not found.\n");
+			// }
+			// ********* TESTE **********
+			
 			read_inode(fd, entry_inode, &group, &inode);
-            cat(fd,&inode);
+			
+            cat(fd, &inode, &group, second_param, &currentGroup);
+
+			// retorna o inode para o root (diretorio em que estava no momento em que o cat foi chamado)
+			read_inode(fd, 2, &group, &inode);
         }
 
         else if((strcmp(comando, "attr")) == 0) {
-            // chama attr;
+            attr(&inode, &group, second_param, &currentGroup);
     	}
 
-	}
+		else if((strcmp(comando, "cd")) == 0) {
+			//utilizar pilha
+			strcpy(diretorio,second_param);
+			change_directory(second_param, &inode, &group, &currentGroup, &stack);
+		}
+		else if((strcmp(comando, "pwd")) == 0){
+			pwd(&stack);
+		}
 
+		else if((strcmp(comando, "exit")) == 0){
+			break;
+		}
+		else {
+			printf("command not found.\n");
+		}
+
+	}
 
 
 
