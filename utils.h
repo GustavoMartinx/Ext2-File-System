@@ -75,9 +75,9 @@ void read_super_block();
 void read_group_descriptor(struct ext2_group_desc group);
 void read_inode(int fd, int inode_no, const struct ext2_group_desc *group, struct ext2_inode *inode);
 void print_read_root_inode(struct ext2_inode inode);
-unsigned int read_dir(int fd, const struct ext2_inode *inode, const struct ext2_group_desc *group, char* nomeArquivo);
+int read_dir(int fd, const struct ext2_inode *inode, const struct ext2_group_desc *group, char* nomeArquivo);
 //unsigned int group_number(unsigned int inode, struct ext2_super_block super);
-void cat(int fd, struct ext2_inode *inode);
+void cat(int fd, struct ext2_inode *inode, struct ext2_group_desc *group, char *arquivoNome, int *currentGroup);
 void change_group(unsigned int *inode, struct ext2_group_desc *groupToGo, int *currentGroup);
 char* catch_principal_param(char* comando);
 char* catch_second_param(char* comando);
@@ -94,6 +94,6 @@ typedef struct {
 /** COMMANDS **/
 void info();
 void ls(struct ext2_inode*, struct ext2_group_desc*);
-void change_directory(char* dirName, struct ext2_inode *inode, struct ext2_group_desc *group, int* currentGroup /*, Pilha* */);
+void change_directory(char* dirName, struct ext2_inode *inode, struct ext2_group_desc *group, int* currentGroup, Pilha* );
 void pwd(Pilha* );
 void touch(int fd, struct ext2_group_desc* group, char* arquivo_nome);
