@@ -177,7 +177,7 @@ void print_read_root_inode(struct ext2_inode inode)
 
 
 // Function to show entries
-int read_dir(int fd, const struct ext2_inode *inode, const struct ext2_group_desc *group, char* nomeArquivo)
+unsigned int read_dir(int fd, const struct ext2_inode *inode, const struct ext2_group_desc *group, char* nomeArquivo)
 {
 	void *block;
 
@@ -240,17 +240,15 @@ void cat(int fd, struct ext2_inode *inode, struct ext2_group_desc *group, char *
 	memcpy(grupoTemp, group, sizeof(struct ext2_group_desc));
 	memcpy(inodeEntryTemp, inode, sizeof(struct ext2_inode));
 	unsigned int inodeRetorno = read_dir(fd, inodeEntryTemp, grupoTemp, arquivoNome);
-
-	// novo_inode = 12;
-
-	printf("\nNOVO_INODE: %d\n", inodeRetorno);
+	// READ_DIR RETORNA INODE ERRADO (ela consegue encontrar o certo, mas RETORNA errado)
+	// inodeRetorno = 12290;
+	printf("\ninodeRetorno: %u\n", inodeRetorno);
 
 	change_group(&inodeRetorno, grupoTemp, currentGroup);
 
 	unsigned int index = inodeRetorno % super.s_inodes_per_group;
 	
 	read_inode(fd, index, grupoTemp, inodeEntryTemp);
-	// read_dir(fd, novo_inode, grupoTemp, arquivoNome);
 	
 
 	char *block = (char*)malloc(sizeof(char)*block_size);
@@ -357,7 +355,7 @@ void cat(int fd, struct ext2_inode *inode, struct ext2_group_desc *group, char *
 
 	// read_inode(fd, entry_inode, &group, &inode);
 
-	// printf("SDSDS\n");
+
 	free(block);
 	free(grupoTemp);
 	free(inodeEntryTemp);
@@ -469,7 +467,7 @@ void change_directory(char* dirName, struct ext2_inode *inode, struct ext2_group
 
 			// PARA RETORNAR INODE
 			if((strcmp(dirName, entry->name)) == 0){
-				printf("entry->name: [%s]\n", entry->name);
+				// printf("entry->name: [%s]\n", entry->name);
 				if(strcmp(entry->name, "..") != 0){
 					PUSH(entry->name, stack);
 				}
@@ -739,7 +737,7 @@ int main() {
 			// verificação se o arquivo solicitado existe naquele dir
 			// pré-processamento de onde estará inode/group daquele arquivo (procurar apenas no dir em que estamos naquele momento)
 			//read_inode(fd, 2, &group, &inode);
-			unsigned int entry_inode = read_dir(fd, &inode, &group, second_param);
+			// unsigned int entry_inode = read_dir(fd, &inode, &group, second_param); NÃO DESCOMENTAR
 
 			// ********* TESTE TRATAMENTO DE ERROS **********
 			// if(strcmp(second_param, "NULL") == 0){
@@ -752,7 +750,7 @@ int main() {
 			// }
 			// ********* TESTE **********
 			
-			read_inode(fd, entry_inode, &group, &inode);
+			// read_inode(fd, entry_inode, &group, &inode); NÃO DESCOMENTAR
 			
             cat(fd, &inode, &group, second_param, &currentGroup);
 
