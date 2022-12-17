@@ -15,6 +15,81 @@ static unsigned int block_size = 0;        /* block size (to be calculated) */
 struct ext2_super_block super;
 int fd;
 
+/******* Pilha **********/
+
+// Insere um elemento/diretório na pilha, retorna o tamanho
+int PUSH(const char* val, Pilha* p)
+{
+    if ((p == NULL) || (val == NULL)) return -1;
+    if (strlen(val) > TAMANHO_ - 1) return -2;
+    p->tam += 1;
+    if (p->tam > p->lim)
+    {
+        p->tam -= 1;
+        return -3;
+    }
+    strcpy(p->dado[p->tam], val);
+    return p->tam;
+}
+
+// Diminui o tamanho da pilha: "remover um elemento/diretório"
+int POP(Pilha* p)
+{
+    if (p == NULL) return -1;
+    if (p->tam == 0) { //não sei se funciona 
+        PUSH("/", p);
+        return -2;
+    }
+    p->tam -= 1;
+
+	// Retorna novo tamanho
+    return p->tam;
+}
+
+// int TOP(Pilha* p, Registro* val)
+// {
+//     if ((p == NULL) || (val == NULL)) return -1;
+//     if (p->tam == 0) return -2;
+//     strcpy(val, p->dado[p->tam]);
+//     return 0;
+// }
+
+int mostra(Pilha* p, const char* tit)
+{
+    if (p == NULL)
+    {
+        //printf("pilha invalida\n");
+        return -1;
+    }
+    if (tit != NULL) printf("%s\n", tit);
+    if (p->tam == 0)
+    {
+        //printf("Pilha VAZIA (cap:%d):\n", p->lim);
+        return 0;
+    }
+    //printf("%d elementos (cap:%d):\n", p->tam, p->lim);
+    for (int i = 1; i < p->tam; i += 1)
+        printf("/%s", p->dado[i]);
+    printf("/%s\n\n", p->dado[p->tam]);
+    return 0;
+}
+
+Pilha* cria(size_t limite)
+{
+    Pilha* nova = (Pilha*)malloc(sizeof(Pilha));
+    if (nova == NULL) return NULL;
+    nova->lim = (int) limite;
+    nova->tam = 0; // marca como vazia
+    return nova; // tudo certo: retorna a pilha nova
+}
+
+Pilha* destroi(Pilha* pilha)
+{
+    if (pilha == NULL) return NULL;
+    free(pilha->dado);
+    free(pilha);
+    return NULL;
+}
 
 
 // Function to read super block
