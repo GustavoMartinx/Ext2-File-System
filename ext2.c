@@ -510,7 +510,6 @@ void attr(struct ext2_inode *inode, struct ext2_group_desc *group, char *arquivo
 			"gid \t"
 			"tamanho \t"
 			"modificado em\t\n"
-			//"%hu\t\t"
 			"%c"
 			"%c"
 			"%c"
@@ -522,9 +521,7 @@ void attr(struct ext2_inode *inode, struct ext2_group_desc *group, char *arquivo
 			"%c"
 			"%c\t"
 			"%d\t"
-			"%d ",
-			//"%hu\t\t"
-			//"%d\t\t\n",
+			"%d  ",
 			fileOrDir,
 			uRead,
 			uWrite,
@@ -537,15 +534,29 @@ void attr(struct ext2_inode *inode, struct ext2_group_desc *group, char *arquivo
 			oExec,
 			entry->i_uid,
 			entry->i_gid
-			//entry->i_size,
-			//entry->i_mtime
 			);
 		/*Colocar a unidade correta*/
 	if (entry->i_size > 1024){
-		printf("   %.1f KiB", (((float)entry->i_size) / 1024));
+		printf("   %.1f KiB\t\t", (((float)entry->i_size) / 1024));
 	}else{
-		printf("    %d B ", (entry->i_size));
+		printf("    %d B\t\t", (entry->i_size));
 	}
+		/*Transformando os segundos em data e hora, pela biblioteca time.h*/
+		struct tm *mtime;
+			time_t segundos = entry->i_mtime;
+			mtime = localtime(&segundos); 
+			printf(
+					"%d/"
+					"%d/"
+					"%d"
+					" %d:" 
+					"%d\n",
+		   			mtime->tm_mday, 	
+					mtime->tm_mon + 1, 
+					(mtime->tm_year + 1900),
+		   			mtime->tm_hour, 
+					mtime->tm_min
+				);
 
 	
 }
