@@ -195,7 +195,6 @@ unsigned int read_dir(int fd, const struct ext2_inode *inode, const struct ext2_
 	void *block;
 
 	if (S_ISDIR(inode->i_mode)) {
-		// printf("QUERO SABER SE ALFABETO ENTRA AQUI");
 		struct ext2_dir_entry_2 *entry;
 		unsigned int size = 0;
 
@@ -547,6 +546,8 @@ void attr(struct ext2_inode *inode, struct ext2_group_desc *group, char *arquivo
 	}else{
 		printf("    %d B ", (entry->i_size));
 	}
+
+	
 }
 
 void pwd(Pilha* stack) {
@@ -805,6 +806,7 @@ int main() {
 	/********** TESTE: TUDO NO SHELL ********/
 	char* diretorio = calloc(50, sizeof(char));
 	char *fullCommand = calloc(100, sizeof(char));
+
 	while (1)
     {
 
@@ -821,15 +823,18 @@ int main() {
 		char* second_param = calloc(100, sizeof(char));
 		second_param = "NULL";
 		
+		// Verificação para identificar se o comando digitado pelo usuário possui argumentos ou não:
+		// Se existir um espaço no comando, chama as funções para capturar o comando principal (primeiro -
+		// ex.: cat) e o segundo argumento (ex.: <fileName>), respectivamente.
+		// Caso contrário (ou seja, se não existir o char 'espaço' no comando principal),
+		// apenas copia o conteúdo do comando principal (fullCommand) para a variável comando.
 		if(strchr(fullCommand, ' ') != NULL) {
 			
 			// Captura comando principal (comando) 		  Ex.: cat
 			comando = catch_principal_param(fullCommand);
-			// printf("\ncomando principal: %s\n", comando);
 
-			// Captura segundo comando (second_param)     Ex.: fileName
+			// Captura segundo comando (second_param)     Ex.: <fileName>
 			second_param = catch_second_param(fullCommand);
-			// printf("\n segundo param la fora: %s\n", second_param);
 
 		} else if(strchr(fullCommand, ' ') == NULL) {
 			
@@ -849,10 +854,6 @@ int main() {
         }
 
         else if((strcmp(comando, "cat")) == 0) {
-			// verificação se o arquivo solicitado existe naquele dir
-			// pré-processamento de onde estará inode/group daquele arquivo (procurar apenas no dir em que estamos naquele momento)
-			//read_inode(fd, 2, &group, &inode);
-			// unsigned int entry_inode = read_dir(fd, &inode, &group, second_param); NÃO DESCOMENTAR
 
 			// ********* TESTE TRATAMENTO DE ERROS **********
 			// if(strcmp(second_param, "NULL") == 0){
@@ -863,14 +864,8 @@ int main() {
 			// if(entry_inode == 1 && (strcmp(second_param, "NULL") != 0)){
 			// 	printf("directory not found.\n");
 			// }
-			// ********* TESTE **********
-			
-			// read_inode(fd, entry_inode, &group, &inode); NÃO DESCOMENTAR
 			
             cat(fd, &inode, &group, second_param, &currentGroup);
-
-			// retorna o inode para o root (diretorio em que estava no momento em que o cat foi chamado)
-			// read_inode(fd, 2, &group, &inode);
         }
 
         else if((strcmp(comando, "attr")) == 0) {
