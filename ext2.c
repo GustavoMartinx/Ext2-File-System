@@ -240,9 +240,8 @@ void cat(int fd, struct ext2_inode *inode, struct ext2_group_desc *group, char *
 	memcpy(grupoTemp, group, sizeof(struct ext2_group_desc));
 	memcpy(inodeEntryTemp, inode, sizeof(struct ext2_inode));
 	unsigned int inodeRetorno = read_dir(fd, inodeEntryTemp, grupoTemp, arquivoNome);
-	// READ_DIR RETORNA INODE ERRADO (ela consegue encontrar o certo, mas RETORNA errado)
-	// inodeRetorno = 12290;
-	printf("\ninodeRetorno: %u\n", inodeRetorno);
+	
+	// printf("\ninodeRetorno: %u\n", inodeRetorno);
 
 	change_group(&inodeRetorno, grupoTemp, currentGroup);
 
@@ -261,7 +260,7 @@ void cat(int fd, struct ext2_inode *inode, struct ext2_group_desc *group, char *
 	int singleIndirection[256];
 	int doubleIndirection[256];
 
-	printf("ARQ SIZE: %d ", arqSize);
+	// printf("ARQ SIZE: %d ", arqSize);
 
 	// Percorrendo pelos blocos de dados sem indireção
 	for(int i = 0; i < 12; i++) {
@@ -351,11 +350,13 @@ void cat(int fd, struct ext2_inode *inode, struct ext2_group_desc *group, char *
 		}
 	}
 
-	// unsigned int entry_inode = read_dir(fd, &inode, &group, second_param);
+	// Fazendo o inode voltar a ser o inode do diretório em que estava no momento em que
+	// o cat de um arquivo foi chamado.
+	unsigned int current_dir_entry_inode = read_dir(fd, inodeEntryTemp, grupoTemp, ".");
 
-	// read_inode(fd, entry_inode, &group, &inode);
+	read_inode(fd, current_dir_entry_inode, grupoTemp, inodeEntryTemp);
 
-
+	// Desalocando memória
 	free(block);
 	free(grupoTemp);
 	free(inodeEntryTemp);
@@ -755,7 +756,7 @@ int main() {
             cat(fd, &inode, &group, second_param, &currentGroup);
 
 			// retorna o inode para o root (diretorio em que estava no momento em que o cat foi chamado)
-			read_inode(fd, 2, &group, &inode);
+			// read_inode(fd, 2, &group, &inode);
         }
 
         else if((strcmp(comando, "attr")) == 0) {
