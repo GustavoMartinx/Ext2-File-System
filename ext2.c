@@ -1,4 +1,9 @@
-//Autores: AmandaFerrari, Catarine Cruz e Gustavo Zanzin.
+/*
+Descrição: O código a seguir, tem o objetivo de simular o sistema de arquivos Ext2.
+Autores: Amanda Ferrari, Catarine Cruz e Gustavo Zanzin.
+Data de criação: 
+Atualizado em: 09/12/2022, 10/12/2022, 16/12/2022, 17/12/2022.
+*/
 
 #include "./utils.h"
 
@@ -228,7 +233,7 @@ unsigned int read_dir(int fd, const struct ext2_inode *inode, const struct ext2_
 		free(block);
 	}
 
-	printf("\n\n");
+	//printf("\n\n");
 	
 	//********TESTE *********
 	// return 1;
@@ -397,7 +402,9 @@ void ls(struct ext2_inode *inode, struct ext2_group_desc *group) {
 
 			char file_name[EXT2_NAME_LEN+1];
 			memcpy(file_name, entry->name, entry->name_len);
-			file_name[entry->name_len] = 0;     	/* append null character to the file name */
+			
+			// Insere o caracter nulo para indicar o fim do nome do arquivo
+			file_name[entry->name_len] = 0;
  
 			printf("%s\n"
 			       "inode: %10u\n"
@@ -411,7 +418,7 @@ void ls(struct ext2_inode *inode, struct ext2_group_desc *group) {
 					entry->file_type);
 			
 			// Iteration
-			entry = (void*) entry + entry->rec_len;  // casting
+			entry = (void*) entry + entry->rec_len;
 			size += entry->rec_len;
 		}
 
@@ -652,7 +659,7 @@ void change_group(unsigned int* inode, struct ext2_group_desc* groupToGo, int* c
 }
 
 // Separa segundo comando do input completo
-char* catch_second_param(char* comando) {
+char* catch_second_param(char* comando) {  // renomeia pra terceiro
 
 	if(strchr(comando, ' ') != NULL) {
 
@@ -673,7 +680,7 @@ char* catch_second_param(char* comando) {
 	}
 }
 
-// Separa primeiro/principal comando do input completo
+// Separa primeiro/principal comando do input completo.
 char* catch_principal_param(char* comando) {
 	
 	char* buff = calloc(100, sizeof(char));
@@ -686,6 +693,179 @@ char* catch_principal_param(char* comando) {
 	return buff;
 }
 
+// Separa segundo comando do input completo
+char* catch_third_param(char* comando) {  // essse vai ser o segundo
+
+	if(strchr(comando, ' ') != NULL) {
+
+		char* forward_space_position = calloc(100, sizeof(char));
+		forward_space_position = strchr(comando, ' ');  // retorna o restante da string a partir de onde estiver o char ' ' (espaço).
+
+		// To remove the space:
+		// moving each position backward
+		for(int j = 0; forward_space_position[j+1] != '\0'; j++) {
+			forward_space_position[j] = forward_space_position[j+1];
+		}
+		
+		// putting '\0' in last position of forward_space_position
+		int second_param_len = strlen(forward_space_position);
+		forward_space_position[second_param_len - 1] = '\0';
+
+		return forward_space_position;
+	}
+}
+
+
+// Copia conteúdo dos blocos de dados nos inodes para o arquivo de destino.
+void copia_arquivo(struct ext2_inode* inode, char* originFile, char* destinyFile, struct ext2_group_desc *group, int *currentGroup) {
+	
+	struct ext2_group_desc* grupoTemp = (struct ext2_group_desc *)malloc(sizeof(struct ext2_group_desc));
+	struct ext2_inode* inodeEntryTemp = (struct ext2_inode*)malloc(sizeof(struct ext2_inode));
+	
+	memcpy(grupoTemp, group, sizeof(struct ext2_group_desc));
+	memcpy(inodeEntryTemp, inode, sizeof(struct ext2_inode));
+	unsigned int inodeRetorno = read_dir(fd, inodeEntryTemp, grupoTemp, originFile);
+
+	change_group(&inodeRetorno, grupoTemp, currentGroup);
+	
+	int index = inodeRetorno % super.s_inodes_per_group;
+
+	read_inode(fd, index, group, inodeEntryTemp);
+	
+	char* destinyFileName = malloc(strlen(destinyFile) + 2);
+	strcat(destinyFileName, "./");
+	strcat(destinyFileName, destinyFile);
+
+	printf("destinyFileName %s", destinyFileName);
+	
+	FILE *destinyFileFile;
+	destinyFileFile = fopen(destinyFileName, "w");
+  	
+	if (destinyFileFile == NULL) {
+  	  printf("Erro ao tentar abrir o arquivo!");
+  	  exit(1);
+  	}
+
+	// Aloca um bloco
+	char *block = (char*)malloc(sizeof(char) * block_size);
+
+	// Posiciona o leitor no primeiro bloco de dados diretos e o lê em block
+	lseek(fd, BLOCK_OFFSET(inodeEntryTemp->i_block[0]), SEEK_SET);
+	read(fd, block, block_size);
+
+	int arqSize = inodeEntryTemp->i_size;
+	int singleIndirection[256];
+	int doubleIndirection[256];
+	char charLido = '0';
+
+	// Percorrendo pelos blocos de dados sem indireção
+	for(int i = 0; i < 12; i++) {
+
+		lseek(fd, BLOCK_OFFSET(inodeEntryTemp->i_block[i]), SEEK_SET);
+		read(fd, block, block_size); // Lê bloco i em block
+		
+		// Exibindo conteúdo do primeiro bloco
+		for(int i = 0; i < 1024; i++) {
+			
+			// Copia caracter da posição i de bloco para charLido
+			charLido = block[i];
+
+			// Escreve o caracter lido no arquivo de destino
+			fputc(charLido, destinyFileFile);
+			
+			// Quantidade de dados restantes a serem lidos
+			arqSize = arqSize - sizeof(char);
+
+			if(arqSize <= 0) {
+				break;
+			}
+		}
+		if(arqSize <= 0) {
+			break;
+		}
+	}
+
+	// Se após os blocos sem indireção ainda existirem dados,
+	// percorre o bloco 12 (uma indireção)
+	if(arqSize > 0) {
+		
+		lseek(fd, BLOCK_OFFSET(inodeEntryTemp->i_block[12]), SEEK_SET);
+		read(fd, singleIndirection, block_size);
+		
+		for(int i = 0; i < 256; i++) {
+			
+			lseek(fd, BLOCK_OFFSET(singleIndirection[i]), SEEK_SET);
+			read(fd, block, block_size);
+
+			for(int j = 0; j < 1024; j++) {
+				
+				// Copia caracter da posição i de bloco para charLido
+				charLido = block[j];
+
+				// Escreve o caracter lido no arquivo de destino
+				fputc(charLido, destinyFileFile);
+				
+				arqSize = arqSize - 1;
+				
+				if (arqSize <= 0) {
+					break;
+				}
+			}
+			if (arqSize <= 0) {
+				break;
+			}
+		}
+	}
+
+	// Se depois dos blocos com uma indireção ainda existirem dados,
+	// percorre o bloco 13 (dupla indireção)
+	if(arqSize > 0){
+
+		lseek(fd, BLOCK_OFFSET(inodeEntryTemp->i_block[13]), SEEK_SET);
+		read(fd, doubleIndirection, block_size);
+
+		for(int i = 0; i < 256; i++){
+			
+			//não entendi
+			if(arqSize <= 0){
+				break;
+			}
+
+			lseek(fd, BLOCK_OFFSET(doubleIndirection[i]), SEEK_SET);
+			read(fd, singleIndirection, block_size);
+
+			for(int j = 0; j < 256; j++) {
+				
+				if (arqSize <= 0){
+					break;
+				}
+
+				lseek(fd, BLOCK_OFFSET(singleIndirection[j]), SEEK_SET);
+				read(fd, block, block_size);
+
+				for(int k = 0; k < 1024; k++){
+					
+					// Copia caracter da posição i de bloco para charLido
+					charLido = block[k];
+
+					// Escreve o caracter lido no arquivo de destino
+					fputc(charLido, destinyFileFile);
+					
+					arqSize = arqSize - 1;
+					
+					if (arqSize <= 0){
+						break;
+					}
+				}
+			}
+		}
+	}
+	free(block);
+	free(grupoTemp);
+	free(inodeEntryTemp);
+
+	fclose(destinyFileFile);
+}
 
 
 
@@ -713,14 +893,13 @@ int main() {
 	struct ext2_group_desc group;
 	int currentGroup = 0;
 	
-	/*Create stack */
-	 Pilha stack = {.tam = 0, .lim = TAMANHO_};
-	
+	// Criando a pilha 
+	Pilha stack = {.tam = 0, .lim = TAMANHO_};
 
- 	/* open floppy device */
+ 	// Abrindo a imagem (floppy disk image)
  	if ((fd = open(FD_DEVICE, O_RDONLY)) < 0) {
  		perror(FD_DEVICE);
- 		exit(1);  /* error while opening the floppy device */
+ 		exit(1);  // error while opening the floppy device
  	}
 
 
@@ -832,26 +1011,37 @@ int main() {
 		// Alocações para comando principal e seu parâmetro (se houver)
 		char* comando = calloc(100, sizeof(char));
 		char* second_param = calloc(100, sizeof(char));
+		char* third_param = calloc(100, sizeof(char));
 		second_param = "NULL";
+		third_param = "NULL";
+
+		comando = strtok(fullCommand, " ");
+		second_param = strtok(NULL, " ");
+		third_param = strtok(NULL, " ");
+
+		printf("\ncomando: %s\n", comando);
+		printf("\nsecond_param: %s\n", second_param);
+		printf("\nthird_param: %s\n", third_param);
+
 		
 		// Verificação para identificar se o comando digitado pelo usuário possui argumentos ou não:
 		// Se existir um espaço no comando, chama as funções para capturar o comando principal (primeiro -
 		// ex.: cat) e o segundo argumento (ex.: <fileName>), respectivamente.
 		// Caso contrário (ou seja, se não existir o char 'espaço' no comando principal),
 		// apenas copia o conteúdo do comando principal (fullCommand) para a variável comando.
-		if(strchr(fullCommand, ' ') != NULL) {
-			
-			// Captura comando principal (comando) 		  Ex.: cat
-			comando = catch_principal_param(fullCommand);
+		//if(strchr(fullCommand, ' ') != NULL) {
+		//	
+		//	// Captura comando principal (comando) 		  Ex.: cat
+		//	comando = catch_principal_param(fullCommand);
 
-			// Captura segundo comando (second_param)     Ex.: <fileName>
-			second_param = catch_second_param(fullCommand);
+		//	// Captura segundo comando (second_param)     Ex.: <fileName>
+		//	second_param = catch_second_param(fullCommand);
 
-		} else if(strchr(fullCommand, ' ') == NULL) {
-			
-			// Captura comandos compostos por apenas uma palavra. Ex.: info
-			strcpy(comando, fullCommand);
-		}
+		//} else if(strchr(fullCommand, ' ') == NULL) {
+		//	
+		//	// Captura comandos compostos por apenas uma palavra. Ex.: info
+		//	strcpy(comando, fullCommand);
+		//}
 		
 
 		/****** Comparações: entrada == comando esperado  ******/
@@ -888,13 +1078,20 @@ int main() {
 			strcpy(diretorio,second_param);
 			change_directory(second_param, &inode, &group, &currentGroup, &stack);
 		}
+
 		else if((strcmp(comando, "pwd")) == 0){
 			pwd(&stack);
+		}
+
+		else if((strcmp(comando, "cp")) == 0) {
+
+			copia_arquivo(&inode, second_param, third_param, &group, &currentGroup); // destinyFile => third_param | originFile => novo second_param 
 		}
 
 		else if((strcmp(comando, "exit")) == 0){
 			break;
 		}
+
 		else {
 			printf("command not found.\n");
 		}

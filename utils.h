@@ -9,6 +9,7 @@
 #include <errno.h>     
 #include <sys/wait.h>  
 #include <sys/resource.h>
+#include "time.h"
 #include "./ext2_fs.h"
 
 
@@ -96,4 +97,5 @@ void info();
 void ls(struct ext2_inode*, struct ext2_group_desc*);
 void change_directory(char* dirName, struct ext2_inode *inode, struct ext2_group_desc *group, int* currentGroup, Pilha* );
 void pwd(Pilha* );
+void copia_arquivo(struct ext2_inode* inode, char* originFile, char* destinyFile, struct ext2_group_desc *group, int *currentGroup);
 void touch(int fd, struct ext2_group_desc* group, char* arquivo_nome);
