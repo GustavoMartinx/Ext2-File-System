@@ -63,6 +63,14 @@ struct ext2_super_block {
 };
 
 
+/** STACK FUNCTION **/
+typedef struct {
+    int  tam; // quantos tem
+    int  lim; // quantos cabem
+    char dado[LIMITE_][TAMANHO_];
+} Pilha;
+
+
 /** DEFINITIONS **/
 #define BASE_OFFSET 1024                   /* locates beginning of the super block (first group) */
 #define FD_DEVICE "./myext2image.img"      /* the floppy disk device */
@@ -82,18 +90,13 @@ void cat(int fd, struct ext2_inode *inode, struct ext2_group_desc *group, char *
 void change_group(unsigned int *inode, struct ext2_group_desc *groupToGo, int *currentGroup);
 char* catch_principal_param(char* comando);
 char* catch_second_param(char* comando);
-
-
-/** STACK FUNCTION **/
-typedef struct {
-    int  tam; // quantos tem
-    int  lim; // quantos cabem
-    char dado[LIMITE_][TAMANHO_];
-} Pilha;
+char* catch_second_param_cp(char* comando);
+char* catch_third_param_cp(char* comando);
 
 
 /** COMMANDS **/
 void info();
+void attr(struct ext2_inode *inode, struct ext2_group_desc *group, char *arquivoNome, int* currentGroup);
 void ls(struct ext2_inode*, struct ext2_group_desc*);
 void change_directory(char* dirName, struct ext2_inode *inode, struct ext2_group_desc *group, int* currentGroup, Pilha* );
 void pwd(Pilha* );
