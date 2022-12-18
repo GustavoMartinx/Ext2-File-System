@@ -644,8 +644,6 @@ void change_directory(char* dirName, struct ext2_inode *inode, struct ext2_group
 
 
 
-
-
 void change_group(unsigned int* inode, struct ext2_group_desc* groupToGo, int* currentGroup) {	
 	unsigned int block_group = ((*inode) - 1) / super.s_inodes_per_group; // Cálculo do grupo do Inode
 
@@ -658,27 +656,6 @@ void change_group(unsigned int* inode, struct ext2_group_desc* groupToGo, int* c
 	}
 }
 
-// Separa segundo comando do input completo
-char* catch_second_param(char* comando) {  // renomeia pra terceiro
-
-	if(strchr(comando, ' ') != NULL) {
-
-		char* forward_space_position = calloc(100, sizeof(char));
-		forward_space_position = strchr(comando, ' ');  // retorna o restante da string a partir de onde estiver o char ' ' (espaço).
-
-		// To remove the space:
-		// moving each position backward
-		for(int j = 0; forward_space_position[j+1] != '\0'; j++) {
-			forward_space_position[j] = forward_space_position[j+1];
-		}
-		
-		// putting '\0' in last position of forward_space_position
-		int second_param_len = strlen(forward_space_position);
-		forward_space_position[second_param_len - 1] = '\0';
-
-		return forward_space_position;
-	}
-}
 
 // Separa primeiro/principal comando do input completo.
 char* catch_principal_param(char* comando) {
@@ -694,25 +671,97 @@ char* catch_principal_param(char* comando) {
 }
 
 // Separa segundo comando do input completo
-char* catch_third_param(char* comando) {  // essse vai ser o segundo
+char* catch_second_param(char* comando) {
 
-	if(strchr(comando, ' ') != NULL) {
+	if(strstr(comando, " ") != NULL) {
 
 		char* forward_space_position = calloc(100, sizeof(char));
-		forward_space_position = strchr(comando, ' ');  // retorna o restante da string a partir de onde estiver o char ' ' (espaço).
+	    // Retorna o restante da string a partir de onde estiver o char " " (espaço)
+        forward_space_position = strchr(comando, ' ');
 
-		// To remove the space:
-		// moving each position backward
+		// Para remover o espaço que fica na primeira posição:
+		// Copia cada elemento uma posição para trás 
 		for(int j = 0; forward_space_position[j+1] != '\0'; j++) {
 			forward_space_position[j] = forward_space_position[j+1];
 		}
-		
-		// putting '\0' in last position of forward_space_position
+        
+		// Com isso, o último char fica duplicado. Logo, insere-se
+		// '\0' na última posição de forward_space_position
 		int second_param_len = strlen(forward_space_position);
 		forward_space_position[second_param_len - 1] = '\0';
 
 		return forward_space_position;
 	}
+}
+
+// Separa segundo comando/primeiro parâmetro (arquivo origem) do input completo de um comando cp
+char* catch_second_param_cp(char* comando) {
+
+	// Alocação de memória
+    char* command_copy = calloc(100, sizeof(char));
+    char* primeiro_entre_aspas = calloc(100, sizeof(char));
+	strcpy(command_copy, comando);
+    
+    // Se existir aspas dupla na string (ou seja, dois arquivos/parâmetros para o cp), 
+    if(strstr(command_copy, "'") != NULL) {
+
+		// descarta a string até a ocorrência da primeira aspas
+        strtok(command_copy, "'");
+        // salva a string até a próxima (segunda) aspas => primeiro arquivo (origem)
+        primeiro_entre_aspas = strtok(NULL, "'");
+        // printf("primeiro_entre_aspas: %s\n", primeiro_entre_aspas);
+       
+        // Desalocação de memória na condição verdadeira
+        free(command_copy);
+
+        return primeiro_entre_aspas;
+	
+    } else {
+        
+        // Desalocação de memória na condição falsa
+        free(primeiro_entre_aspas);
+        free(command_copy);
+
+        // Mensagem para tratamento de erro
+        printf("ERRO. Sintaxe inválida: insira o nome dos arquivos entre aspas simples.");
+    }
+}
+
+
+// Separa segundo comando/terceiro parâmetro (arquivo de destino) do input completo de um comando cp
+char* catch_third_param_cp(char* comando) {
+
+    // Alocação de memória
+    char* command_copy = calloc(100, sizeof(char));
+    char* segundo_entre_aspas = calloc(100, sizeof(char));
+	strcpy(command_copy, comando);
+
+	if(strstr(command_copy, "'") != NULL) {
+
+		// Descarta a string até a ocorrência da primeira aspas
+        strtok(command_copy, "'");
+        // Descarta a string até a próxima (segunda) aspas => primeiro arquivo (origem)
+        strtok(NULL, "'");
+        // Descarta a string até a ocorrência do terceiro parâmetro (terceira aspas)
+        strtok(NULL, "'");
+        // Salva a string até a próxima (quarta) aspas => segundo arquivo (destino)
+        segundo_entre_aspas = strtok(NULL, "'");
+        // printf("segundo_entre_aspas: %s\n", segundo_entre_aspas);
+
+        // Desalocação de memória na condição verdadeira
+        free(command_copy);
+	
+        return segundo_entre_aspas;
+
+    } else {
+        
+        // Desalocação de memória na condição falsa
+        free(segundo_entre_aspas);
+        free(command_copy);
+
+        // Mensagem para tratamento de erro
+        printf("ERRO. Sintaxe inválida: insira o nome dos arquivos entre aspas simples.");
+    }
 }
 
 
@@ -1005,7 +1054,8 @@ int main() {
 		mostra(&stack, NULL);
 		printf("]$> ");
 
-		fgets(fullCommand, 100, stdin);  // Captura comando completo pelo shell. Ex.: cat fileName
+		// Captura comando completo pelo shell. Ex.: cat fileName
+		fgets(fullCommand, 100, stdin);
     	fullCommand[strcspn(fullCommand, "\n")] = 0;
 
 		// Alocações para comando principal e seu parâmetro (se houver)
@@ -1015,33 +1065,44 @@ int main() {
 		second_param = "NULL";
 		third_param = "NULL";
 
-		comando = strtok(fullCommand, " ");
-		second_param = strtok(NULL, " ");
-		third_param = strtok(NULL, " ");
-
-		printf("\ncomando: %s\n", comando);
-		printf("\nsecond_param: %s\n", second_param);
-		printf("\nthird_param: %s\n", third_param);
-
 		
 		// Verificação para identificar se o comando digitado pelo usuário possui argumentos ou não:
-		// Se existir um espaço no comando, chama as funções para capturar o comando principal (primeiro -
-		// ex.: cat) e o segundo argumento (ex.: <fileName>), respectivamente.
-		// Caso contrário (ou seja, se não existir o char 'espaço' no comando principal),
-		// apenas copia o conteúdo do comando principal (fullCommand) para a variável comando.
-		//if(strchr(fullCommand, ' ') != NULL) {
-		//	
-		//	// Captura comando principal (comando) 		  Ex.: cat
-		//	comando = catch_principal_param(fullCommand);
+        // Se existir o caractere " ' " (aspas simples) no comando principal - ou seja, o comando é o cp -,
+        // então chama as funções para capturar o comando principal, o arquivo de origem e o arquivo de
+        // destino, respectivamente
+		if(strstr(fullCommand, "'") != NULL) {
+			
+			// Captura primeiro parâmetro (comando principal)  Ex.: cp
+			comando = catch_principal_param(fullCommand);
 
-		//	// Captura segundo comando (second_param)     Ex.: <fileName>
-		//	second_param = catch_second_param(fullCommand);
+			// Captura terceiro segundo (second_param)         Ex.: <fileOrigin>
+			second_param = catch_second_param_cp(fullCommand);
 
-		//} else if(strchr(fullCommand, ' ') == NULL) {
-		//	
-		//	// Captura comandos compostos por apenas uma palavra. Ex.: info
-		//	strcpy(comando, fullCommand);
-		//}
+            // Captura terceiro parâmetro (third_param)        Ex.: <fileDestiny>
+            third_param = catch_third_param_cp(fullCommand);
+
+
+		// Se existir um espaço no comando e não existir aspas (que nesse caso é a forma correta de usar o
+        // comando cp, ou seja, o comando é diferente de cp), então chama as funções para capturar o
+        // comando principal (primeiro - ex.: cat) e o segundo argumento (ex.: <fileName>), respectivamente.
+		} else if(strstr(fullCommand, " ") != NULL) {
+            
+            // Captura comando principal (comando) 		  Ex.: cat
+            comando = catch_principal_param(fullCommand);
+            printf("\ncomando principal la fora: %s\n", comando);
+
+            // Captura segundo comando (second_param)     Ex.: <fileName>
+            second_param = catch_second_param(fullCommand);
+            printf("\nsecond_param la fora: %s\n", second_param);
+
+        
+        // Caso contrário (ou seja, se não existir o char "espaço" ou " ' " (aspas simples) no comando
+        // principal), apenas copia o conteúdo do comando principal (fullCommand) para a variável comando.
+		} else if(strchr(fullCommand, ' ') == NULL) {
+			
+			// Captura comandos do tipo que são compostos por apenas uma palavra. Ex.: info
+			strcpy(comando, fullCommand);
+        }
 		
 
 		/****** Comparações: entrada == comando esperado  ******/
@@ -1096,10 +1157,14 @@ int main() {
 			printf("command not found.\n");
 		}
 
+		free(comando);
+        free(second_param);
+        free(third_param);
 	}
 
 
 
+	free(fullCommand);
 	close(fd);
 	exit(0);
 }
