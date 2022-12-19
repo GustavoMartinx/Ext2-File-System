@@ -90,7 +90,6 @@ char* catch_principal_param(char* comando);
 char* catch_second_param(char* comando);
 char* catch_second_param_cp(char* comando);
 char* catch_third_param_cp(char* comando);
-int verifica_sintaxe(char* segundoPar);
 
 
 /** COMMANDS **/
