@@ -1107,6 +1107,9 @@ int main() {
 
         else if((strcmp(comando, "cat")) == 0) {
 
+			// Variável de controle que permite a execução do comando
+			podeExecutar = 0;
+
 			// Invoca a read_dir() para verificar a existência do arquivo
 			read_dir(fd, &inode, &group, second_param);
 
