@@ -1,8 +1,16 @@
-all:	
-	clear
-	gcc utils.h ext2.c
-	./a.out
+CC=gcc -Wall
 
-minishell:
-	minishell.c -o mini
-	./mini
+PROGS=$(super)
+
+all: $(PROGS)
+
+clean:
+	rm -f $(PROGS)
+
+super: ext2.c utils.h
+	$(CC) ext2.c -o super
+
+debug:
+	$(CC) ext2.c -o super
+	./super
+	rm -f $(PROGS)
