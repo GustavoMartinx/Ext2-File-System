@@ -62,6 +62,12 @@ struct ext2_super_block {
 	__u32	s_reserved[204];	/* Padding to the end of the block */
 };
 
+/** DEFINITIONS **/
+#define BASE_OFFSET 1024                   /* locates beginning of the super block (first group) */
+#define FD_DEVICE "./myext2image.img"      /* the floppy disk device */
+#define BLOCK_OFFSET(block) (BASE_OFFSET + (block - 1) * block_size)
+#define TAMANHO_ 1000
+#define LIMITE_ 4000
 
 /** STACK FUNCTION **/
 typedef struct {
@@ -69,14 +75,6 @@ typedef struct {
     int  lim; // quantos cabem
     char dado[LIMITE_][TAMANHO_];
 } Pilha;
-
-
-/** DEFINITIONS **/
-#define BASE_OFFSET 1024                   /* locates beginning of the super block (first group) */
-#define FD_DEVICE "./myext2image.img"      /* the floppy disk device */
-#define BLOCK_OFFSET(block) (BASE_OFFSET + (block - 1) * block_size)
-#define TAMANHO_ 1000
-#define LIMITE_ 4000
 
 
 /** AUX FUNCTIONS **/
@@ -92,6 +90,7 @@ char* catch_principal_param(char* comando);
 char* catch_second_param(char* comando);
 char* catch_second_param_cp(char* comando);
 char* catch_third_param_cp(char* comando);
+int verifica_sintaxe(char* segundoPar);
 
 
 /** COMMANDS **/
@@ -101,4 +100,3 @@ void ls(struct ext2_inode*, struct ext2_group_desc*);
 void change_directory(char* dirName, struct ext2_inode *inode, struct ext2_group_desc *group, int* currentGroup, Pilha* );
 void pwd(Pilha* );
 void copia_arquivo(struct ext2_inode* inode, char* originFile, char* destinyFile, struct ext2_group_desc *group, int *currentGroup);
-void touch(int fd, struct ext2_group_desc* group, char* arquivo_nome);
