@@ -7,12 +7,12 @@ Atualizado em: 09/12/2022, 10/12/2022, 16/12/2022, 17/12/2022.
 
 #include "./utils.h"
 
-static unsigned int block_size = 0;        /* block size (to be calculated) */
-struct ext2_super_block super;
-int podeExecutar = 0;
-int fd;
+static unsigned int block_size = 0;        // Tamanho do bloco (será calculado posteriormente)
+struct ext2_super_block super;			   // Super-bloco (global)
+int podeExecutar = 0;					   // Definir quando uma função deve ser chamada (diz respeito ao tratamento de erros)
+int fd;									   // Variável que receberá a imagem (global)
 
-/******* Para controle **********/
+/****** Para controle *********/
 #define EXT2_S_IRUSR 0x0100 // user read
 #define EXT2_S_IWUSR 0x0080 // user write
 #define EXT2_S_IXUSR 0x0040 // user execute
@@ -24,10 +24,9 @@ int fd;
 #define EXT2_S_IXOTH 0x0001 // others execute
 
 
+/********** Pilha **********/
 
-/******* Pilha **********/
-
-// Insere um elemento/diretório na pilha, retorna o tamanho
+// Insere um elemento (diretório) na pilha, retorna o tamanho
 int PUSH(const char* val, Pilha* p)
 {
     if ((p == NULL) || (val == NULL)) return -1;
@@ -42,12 +41,11 @@ int PUSH(const char* val, Pilha* p)
     return p->tam;
 }
 
-// Diminui o tamanho da pilha: "remover um elemento/diretório"
+// Remove um elemento (diretório): "diminui o tamanho da pilha"
 int POP(Pilha* p)
 {
     if (p == NULL) return -1;
     if (p->tam == 0) {
-        // PUSH("/", p);
         return -2;
     }
     p->tam -= 1;
@@ -74,15 +72,17 @@ int mostra(Pilha* p, const char* tit)
     return 0;
 }
 
+// Cria a pilha
 Pilha* cria(size_t limite)
 {
     Pilha* nova = (Pilha*)malloc(sizeof(Pilha));
     if (nova == NULL) return NULL;
     nova->lim = (int) limite;
     nova->tam = 0; // marca como vazia
-    return nova; // tudo certo: retorna a pilha nova
+    return nova;   // tudo certo: retorna a pilha nova
 }
 
+// Destroi a pilha
 Pilha* destroi(Pilha* pilha)
 {
     if (pilha == NULL) return NULL;
@@ -92,7 +92,7 @@ Pilha* destroi(Pilha* pilha)
 }
 
 
-// Function to read super block
+// Fucao para ler o super bloco
 void read_super_block() {
 
 	printf(
@@ -108,23 +108,23 @@ void read_super_block() {
 	       "Groups inodes...........: %u inodes\n"
 		   "Inodetable size.........: %lu blocks\n"
 	       ,  
-		   super.s_volume_name, //nome do volume 
-		   (super.s_blocks_count * block_size /* super.s_blocks_per_group*/), //tamanho da imagem
-		   ((super.s_free_blocks_count - super.s_r_blocks_count) * block_size) / 1024, // espaço livre //bug???
-	       super.s_free_inodes_count, //free inodes 
-		   super.s_free_blocks_count, //free blocks
-		   block_size, // tamanho do bloco
-		   super.s_inode_size, //inode size 
-		   (super.s_blocks_count/super.s_blocks_per_group), //bug??
+		   super.s_volume_name, 				// nome do volume 
+		   (super.s_blocks_count * block_size), // tamanho da imagem
+		   ((super.s_free_blocks_count - super.s_r_blocks_count) * block_size) / 1024, // espaço livre
+	       super.s_free_inodes_count, 			// free inodes 
+		   super.s_free_blocks_count, 			// free blocks
+		   block_size, 							// tamanho do bloco
+		   super.s_inode_size, 					// tamanho da estrutura do inode 
+		   (super.s_blocks_count/super.s_blocks_per_group),
 		   super.s_blocks_per_group,
 		   super.s_inodes_per_group,
-		   (super.s_inodes_per_group/(block_size/sizeof(struct ext2_inode)))
-	       );
+		   (super.s_inodes_per_group/(block_size/sizeof(struct ext2_inode))) // tamanho da tabela de inodes
+	    );
 		
 }
 
 
-// Function to read group descriptor
+// Função para ler o primeiro descritor de grupo da imagem
 void read_group_descriptor(struct ext2_group_desc group) {
 	printf("Reading first group-descriptor from device " FD_DEVICE ":\n"
 	       "Blocks bitmap block: %u\n"
@@ -143,22 +143,22 @@ void read_group_descriptor(struct ext2_group_desc group) {
 	printf("\n\n");
 }
 
+// Comando info (chama a função que lê o super-bloco)
 void info() {
 	read_super_block();
 }
 
 
+// Posiciona o leitor do arquivo em (InicioTabelaInodes + DistanciaInodeDesejado) bytes e
+// lê o inode desejado na variável inode passada por parâmetro
+void read_inode(int fd, int inode_no, const struct ext2_group_desc *group, struct ext2_inode *inode) {
 
-// Function to read inode
-void read_inode(int fd, int inode_no, const struct ext2_group_desc *group, struct ext2_inode *inode)
-{
 	lseek(fd, BLOCK_OFFSET(group->bg_inode_table) + (inode_no - 1) * sizeof(struct ext2_inode), SEEK_SET);
 	read(fd, inode, sizeof(struct ext2_inode));
-} /* read_inode() */
+}
 
 
-
-// Function to read root inode
+// Função que acessa e lê o inode do diretório raiz
 void print_read_root_inode(struct ext2_inode inode)
 {
 	printf("Reading root inode\n"
@@ -172,20 +172,21 @@ void print_read_root_inode(struct ext2_inode inode)
 		   inode.i_blocks);
 
 	for (int i = 0; i < EXT2_N_BLOCKS; i++)
-		if (i < EXT2_NDIR_BLOCKS) /* direct blocks */
+		if (i < EXT2_NDIR_BLOCKS)     // Blocos diretos
 			printf("Block %2u : %u\n", i, inode.i_block[i]);
-		else if (i == EXT2_IND_BLOCK) /* single indirect block */
+		else if (i == EXT2_IND_BLOCK) // Bloco com nível de indireção simples
 			printf("Single...: %u\n", inode.i_block[i]);
-		else if (i == EXT2_DIND_BLOCK) /* double indirect block */
+		else if (i == EXT2_DIND_BLOCK) // Bloco com nível de indireção duplo
 			printf("Double...: %u\n", inode.i_block[i]);
-		else if (i == EXT2_TIND_BLOCK) /* triple indirect block */
+		else if (i == EXT2_TIND_BLOCK) // Bloco com nível de indireção triplo
 			printf("Triple...: %u\n", inode.i_block[i]);
 
 	printf("\n\n");
 }
 
 
-// Function to show entries
+// Percorre por todas as entradas de diretório (struct ext2_dir_entry_2) a fim de encontrar um diretório específico
+// por meio do seu nome, e ao encontrá-lo retorna o número do inode
 unsigned int read_dir(int fd, const struct ext2_inode *inode, const struct ext2_group_desc *group, char* nomeArquivo)
 {
 	void *block;
@@ -194,33 +195,41 @@ unsigned int read_dir(int fd, const struct ext2_inode *inode, const struct ext2_
 		struct ext2_dir_entry_2 *entry;
 		unsigned int size = 0;
 
-		if ((block = malloc(block_size)) == NULL) { /* allocate memory for the data block */
+		// Aloca memória para o bloco, caso não obtenha sucesso, termina a execução do programa
+		if ((block = malloc(block_size)) == NULL) {
 			fprintf(stderr, "Memory error\n");
 			close(fd);
 			exit(1);
 		}
 
+		// Lê o bloco da imagem
 		lseek(fd, BLOCK_OFFSET(inode->i_block[0]), SEEK_SET);
-		read(fd, block, block_size);                /* read block from disk */
+		read(fd, block, block_size);
 
-		entry = (struct ext2_dir_entry_2 *) block;  /* first entry in the directory */
+		// Calcula a primeira entrada daquele diretório
+		entry = (struct ext2_dir_entry_2 *) block;
 		
+		// Percorrendo cada entrada do diretório
 		while((size < inode->i_size) && entry->inode) {
 
+			// Alocando variável auxiliar para fazer a comparação
+			// do nome daquela entrada com o nome da entrada desejada
 			char file_name[EXT2_NAME_LEN+1];
 			memcpy(file_name, entry->name, entry->name_len);
-			file_name[entry->name_len] = 0;     	/* append null character to the file name */
+			file_name[entry->name_len] = 0;
 
-			// PARA RETORNAR INODE
+			// Retorna o número do inode no qual o nome contido
+			// da entrada seja igual ao nome do arquivo desejado
 			if((strcmp(nomeArquivo, file_name)) == 0) {
 				return entry->inode;
 			}
 			
-			// Iteration
+			// Iteração
 			entry = (void*) entry + entry->rec_len;
 			size += entry->rec_len;
 		}
 
+		// Para tratamento de erros
 		if((strcmp(nomeArquivo, entry->name)) != 0) {
 			podeExecutar = 1;
 		}
@@ -232,32 +241,37 @@ unsigned int read_dir(int fd, const struct ext2_inode *inode, const struct ext2_
 } 
 
 
-// Function to get the number of a group
+// Função que calcula o número do grupo com base na informação de inodes por grupo
 unsigned int group_number(unsigned int inode, struct ext2_super_block super) {
 	unsigned int group_number = (inode-1) / super.s_inodes_per_group;
 	return group_number;
 }
 
 
-// Function to print the content of a file
+// Exibe o conteúdo de um arquivo-texto (.txt)
 void cat(int fd, struct ext2_inode *inode, struct ext2_group_desc *group, char *arquivoNome, int *currentGroup)
 {	
+	// Alocação de group descriptor e inode temporários para manipulação dos mesmos e não dos originais
 	struct ext2_group_desc *grupoTemp = (struct ext2_group_desc *)malloc(sizeof(struct ext2_group_desc));
 	struct ext2_inode* inodeEntryTemp = (struct ext2_inode*)malloc(sizeof(struct ext2_inode));
 	
+	// Cópias do conteúdo do group descriptor e inode recebidos por parâmetro
+	// que permite a manipulação dos mesmos, preservando os originais
 	memcpy(grupoTemp, group, sizeof(struct ext2_group_desc));
 	memcpy(inodeEntryTemp, inode, sizeof(struct ext2_inode));
 	unsigned int inodeRetorno = read_dir(fd, inodeEntryTemp, grupoTemp, arquivoNome);
 
+	// Trocando o grupo (quando necessário) para o que contém o novo inode
 	change_group(&inodeRetorno, grupoTemp, currentGroup);
 
+	// Cálculo do index real do inode no novo grupo 
 	unsigned int index = inodeRetorno % super.s_inodes_per_group;
 	
+	// Atualização do inode no novo grupo
 	read_inode(fd, index, grupoTemp, inodeEntryTemp);
 	
 
 	char *block = (char*)malloc(sizeof(char)*block_size);
-
 	lseek(fd, BLOCK_OFFSET(inodeEntryTemp->i_block[0]), SEEK_SET);
 	read(fd, block, block_size);
 
@@ -265,8 +279,6 @@ void cat(int fd, struct ext2_inode *inode, struct ext2_group_desc *group, char *
 	
 	int singleIndirection[256];
 	int doubleIndirection[256];
-
-	// printf("ARQ SIZE: %d ", arqSize);
 
 	// Percorrendo pelos blocos de dados sem indireção
 	for(int i = 0; i < 12; i++) {
@@ -278,7 +290,8 @@ void cat(int fd, struct ext2_inode *inode, struct ext2_group_desc *group, char *
 		for(int i = 0; i < 1024; i++) {
 			printf("%c", block[i]);
 			
-			arqSize = arqSize - sizeof(char); // Quantidade de dados restantes
+			// Quantidade de dados restantes
+			arqSize = arqSize - sizeof(char);
 
 			if(arqSize <= 0) {
 				break;
@@ -325,7 +338,6 @@ void cat(int fd, struct ext2_inode *inode, struct ext2_group_desc *group, char *
 
 		for(int i = 0; i < 256; i++){
 			
-			//não entendi
 			if(arqSize <= 0){
 				break;
 			}
@@ -357,7 +369,7 @@ void cat(int fd, struct ext2_inode *inode, struct ext2_group_desc *group, char *
 	}
 
 	// Fazendo o inode voltar a ser o inode do diretório em que estava no momento em que
-	// o cat de um arquivo foi chamado.
+	// o cat de um arquivo foi chamado
 	unsigned int current_dir_entry_inode = read_dir(fd, inodeEntryTemp, grupoTemp, ".");
 
 	read_inode(fd, current_dir_entry_inode, grupoTemp, inodeEntryTemp);
@@ -369,6 +381,7 @@ void cat(int fd, struct ext2_inode *inode, struct ext2_group_desc *group, char *
 
 }
 
+// Percorre o diretorio corrente, listando os arquivos, diretórios e seus atributos
 void ls(struct ext2_inode *inode, struct ext2_group_desc *group) {
 
 	void *block;
@@ -376,26 +389,32 @@ void ls(struct ext2_inode *inode, struct ext2_group_desc *group) {
 	if (S_ISDIR(inode->i_mode)) {
 		struct ext2_dir_entry_2 *entry;
 		unsigned int size = 0;
-
-		if ((block = malloc(block_size)) == NULL) { /* allocate memory for the data block */
+		
+		// Aloca memória para o bloco, caso não obtenha sucesso, termina a execução do programa
+		if ((block = malloc(block_size)) == NULL) {
 			fprintf(stderr, "Memory error\n");
 			close(fd);
 			exit(1);
 		}
 
+		// Lê o bloco da imagem
 		lseek(fd, BLOCK_OFFSET(inode->i_block[0]), SEEK_SET);
-		read(fd, block, block_size);                /* read block from disk*/
+		read(fd, block, block_size);                
 
-		entry = (struct ext2_dir_entry_2 *) block;  /* first entry in the directory */
+		// Calcula a primeira entrada daquele diretório
+		entry = (struct ext2_dir_entry_2 *) block;  
 
+		// Percorrendo cada entrada do diretório
 		while((size < inode->i_size) && entry->inode) {
 
+			// Alocando variável auxiliar para fazer a comparação
+			// do nome daquela entrada com o nome da entrada desejada
 			char file_name[EXT2_NAME_LEN+1];
 			memcpy(file_name, entry->name, entry->name_len);
-			
-			// Insere o caracter nulo para indicar o fim do nome do arquivo
+			// Insere o caractere nulo para indicar o fim do nome do arquivo
 			file_name[entry->name_len] = 0;
- 
+
+			// Imprime as propriedades do diretório ou arquivo existentes no diretório corrente
 			printf("%s\n"
 			       "inode: %10u\n"
 				   "Record lenght: %hu\n"
@@ -407,7 +426,7 @@ void ls(struct ext2_inode *inode, struct ext2_group_desc *group) {
 					entry->name_len,
 					entry->file_type);
 			
-			// Iteration
+			// Iteração
 			entry = (void*) entry + entry->rec_len;
 			size += entry->rec_len;
 		}
@@ -418,78 +437,85 @@ void ls(struct ext2_inode *inode, struct ext2_group_desc *group) {
 	printf("\n\n");
 }
 
+// Exibe os atributos de determinado arquivo
 void attr(struct ext2_inode *inode, struct ext2_group_desc *group, char *arquivoNome, int* currentGroup){
-
+	
+	// Alocação de group descriptor e inode temporários para manipulação dos mesmos e não dos originais
 	struct ext2_inode* entry = (struct ext2_inode*)malloc(sizeof(struct ext2_inode));
 	struct ext2_group_desc *grupoTemp = (struct ext2_group_desc *)malloc(sizeof(struct ext2_group_desc));
 	
+	// Cópias do conteúdo do group descriptor e inode recebidos por parâmetro
+	// que permite a manipulação dos mesmos, preservando os originais
 	memcpy(entry, inode, sizeof(struct ext2_inode));
 	memcpy(grupoTemp, group, sizeof(struct ext2_group_desc));
-	
 	unsigned int inodeRetorno = read_dir(fd, entry, grupoTemp, arquivoNome);
 	
+	// Trocando o grupo (quando necessário) para o que contém o novo inode
 	change_group(&inodeRetorno, grupoTemp, currentGroup);
 	
+	// Cálculo do index real do inode no novo grupo 
 	unsigned int index = inodeRetorno % super.s_inodes_per_group;
 	
+	// Atualização do inode no novo grupo
 	read_inode(fd, index, grupoTemp, entry);
 	
-	/*verificar se é um arquivo ou um diretorio*/
+	// Verifica se é um arquivo ou um diretorio
 	char fileOrDir;
-	if(S_ISDIR(entry->i_mode)){
+	if(S_ISDIR(entry->i_mode)) {
 		fileOrDir = 'd';
 	}else {
 		fileOrDir = 'f';
 	}
 
-	/*verificar as permisões do usuario*/
+	// Verifica as permisões do usuario
 	char uRead; 
 	char uWrite;
 	char uExec;
 	if((entry->i_mode) & (EXT2_S_IRUSR)){
 		uRead = 'r';
-	} else{
+	} else {
 		uRead = '-';
 	}
 	if ((entry->i_mode) & (EXT2_S_IWUSR)){
 		uWrite = 'w';
-	}else{
+	} else {
 		uWrite = '-';
 	}
 	if ((entry->i_mode) & (EXT2_S_IXUSR)){
 		uExec = 'x';
-	}else{
+	} else {
 		uExec = '-';
 	}
 
-	/*verificar as permisões do grupo*/
+	// Verifica as permisões do grupo
 	char gRead; 
 	char gWrite;
 	char gExec;
 
 	if ((entry->i_mode) & (EXT2_S_IRGRP)){
 		gRead = 'r';
-	}else{
+	} else {
 		gRead = '-';
 	}
 	if ((entry->i_mode) & (EXT2_S_IWGRP)){
 		gWrite = 'w';
-	}else{
+	} else {
 		gWrite = '-';
 	}
 	if ((entry->i_mode) & (EXT2_S_IXGRP)){
 		gExec = 'x';
-	}else{
+	} else {
 		gExec = '-';
 	}
 
-	/*verificar as permisões do grupo*/
+	// Verifica as permisões do grupo
 	char oRead; 
 	char oWrite;
+	
 	char oExec;
 	if ((entry->i_mode) & (EXT2_S_IROTH)){
 		oRead = 'r';
-	}else{
+	} else {
 		oRead = '-';
 	}
 	if ((entry->i_mode) & (EXT2_S_IWOTH))
@@ -532,38 +558,43 @@ void attr(struct ext2_inode *inode, struct ext2_group_desc *group, char *arquivo
 			entry->i_uid,
 			entry->i_gid
 			);
-		/*Colocar a unidade correta*/
-	if (entry->i_size > 1024){
+
+	// Coloca a unidade correta
+	if (entry->i_size > 1024) {
+
 		printf("   %.1f KiB\t\t", (((float)entry->i_size) / 1024));
-	}else{
+	
+	} else {
+	
 		printf("    %d B\t\t", (entry->i_size));
 	}
-		/*Transformando os segundos em data e hora, pela biblioteca time.h*/
-		struct tm *mtime;
-			time_t segundos = entry->i_mtime;
-			mtime = localtime(&segundos); 
-			printf(
-					"%d/"
-					"%d/"
-					"%d"
-					" %d:" 
-					"%d\n",
-		   			mtime->tm_mday, 	
-					mtime->tm_mon + 1, 
-					(mtime->tm_year + 1900),
-		   			mtime->tm_hour, 
-					mtime->tm_min
-				);
+	//Transformando os segundos em data e hora, pela biblioteca time.h
+	struct tm *mtime;
+	time_t segundos = entry->i_mtime;
+	mtime = localtime(&segundos); 
+	printf(
+		"%d/"
+		"%d/"
+		"%d"
+		" %d:" 
+		"%d\n",
+		mtime->tm_mday, 	
+		mtime->tm_mon + 1, 
+		(mtime->tm_year + 1900),
+		mtime->tm_hour, 
+		mtime->tm_min
+	);
 
 	
 }
 
+// Exibe o diretório corrente
 void pwd(Pilha* stack) {
-	//Der exit apagar toda a stack
 	mostra(stack, NULL);
 	printf("\n");
 }
 
+// Permite a navegação de diretórios: entre o corrente e o anterior ou algum de seus subdiretórios
 void change_directory(char* dirName, struct ext2_inode *inode, struct ext2_group_desc *group, int *currentGroup, Pilha* stack) {
 
 	void *block;
@@ -572,33 +603,39 @@ void change_directory(char* dirName, struct ext2_inode *inode, struct ext2_group
 		struct ext2_dir_entry_2 *entry;
 		unsigned int size = 0;
 
-		if ((block = malloc(block_size)) == NULL) { /* allocate memory for the data block */
+		// Aloca memória para o bloco, caso não obtenha sucesso, termina a execução do programa
+		if ((block = malloc(block_size)) == NULL) { 
 			fprintf(stderr, "Memory error\n");
 			close(fd);
 			exit(1);
 		}
 
+		// Lê o bloco da imagem
 		lseek(fd, BLOCK_OFFSET(inode->i_block[0]), SEEK_SET);
-		read(fd, block, block_size);                /* read block from disk*/
+		read(fd, block, block_size);               
 
-		entry = (struct ext2_dir_entry_2 *) block;  /* first entry in the directory */
-
+		// Calcula a primeira entrada daquele diretório
+		entry = (struct ext2_dir_entry_2 *) block;  
+		
+		// Percorrendo cada entrada do diretório
 		while((size < inode->i_size) && entry->inode) {
+
+			// Alocando variável auxiliar para fazer a comparação
+            // do nome daquela entrada com o nome da entrada desejada
 			char file_name[EXT2_NAME_LEN+1];
 			memcpy(file_name, entry->name, entry->name_len);
 			file_name[entry->name_len] = 0;     /* append null character to the file name */
 
-			// PARA RETORNAR INODE
+			// Para retornar inode
 			if((strcmp(dirName, file_name)) == 0){
-				// printf("entry->name: [%s]\n", entry->name);
-				if((strcmp(entry->name, "..") != 0) && (strcmp(entry->name, ".") != 0)){
+				
+				if((strcmp(entry->name, "..") != 0) && (strcmp(entry->name, ".") != 0)) {
 					PUSH(entry->name, stack);
 				}
-				else if(strcmp(entry->name, "..") == 0){
+				else if(strcmp(entry->name, "..") == 0) {
 					POP(stack);
 				}
-				
-				//parametros do cd 
+				 
 				printf("%s\n"
 				       "inode: %10u\n"
 					   "Record lenght: %hu\n"
@@ -618,15 +655,11 @@ void change_directory(char* dirName, struct ext2_inode *inode, struct ext2_group
 
 		free(block);
 
-		//se não encontrar o diretorio:
+		// Tratamento de erro caso não encontre o diretório
 		if((strcmp(dirName, entry->name)) != 0){
 			printf("\ndirectory not found.");
-		}
-		
+		}	
 	}
-
-	
-	
 	
 	printf("\n\n");
 
@@ -637,15 +670,18 @@ void change_directory(char* dirName, struct ext2_inode *inode, struct ext2_group
 	unsigned int index = ((int)inodeRetorno) % super.s_inodes_per_group;
 
 	read_inode(fd, index, group, inode);
-	
-	
 }
 
 
-
+// Função que atualiza o grupo
 void change_group(unsigned int* inode, struct ext2_group_desc* groupToGo, int* currentGroup) {	
-	unsigned int block_group = ((*inode) - 1) / super.s_inodes_per_group; // Cálculo do grupo do Inode
+	
+	// Cálculo do grupo do inode
+	unsigned int block_group = ((*inode) - 1) / super.s_inodes_per_group;
 
+	// Se o grupo do Inode é diferente do grupo atual, então atualiza a
+	// variável currentGroup e posiciona o leitor do arquivo no descritor
+	// do novo grupo para fazer a leitura deste na variável passada por parâmetro
 	if (block_group != (*currentGroup))
 	{
 		*currentGroup = block_group;
@@ -656,7 +692,7 @@ void change_group(unsigned int* inode, struct ext2_group_desc* groupToGo, int* c
 }
 
 
-// Separa primeiro/principal comando do input completo.
+// Separa primeiro/principal comando do input completo
 char* catch_principal_param(char* comando) {
 	
 	char* buff = calloc(100, sizeof(char));
@@ -768,30 +804,41 @@ char* catch_third_param_cp(char* comando) {
 // Copia conteúdo dos blocos de dados nos inodes para o arquivo de destino.
 void copia_arquivo(struct ext2_inode* inode, char* originFile, char* destinyFile, struct ext2_group_desc *group, int *currentGroup) {
 	
+	// Alocação de group descriptor e inode temporários para manipulação dos mesmos e não dos originais
 	struct ext2_group_desc* grupoTemp = (struct ext2_group_desc *)malloc(sizeof(struct ext2_group_desc));
 	struct ext2_inode* inodeEntryTemp = (struct ext2_inode*)malloc(sizeof(struct ext2_inode));
 	
+	// Cópias do conteúdo do group descriptor e inode recebidos por parâmetro
+  	// que permite a manipulação dos mesmos, preservando os originais
 	memcpy(grupoTemp, group, sizeof(struct ext2_group_desc));
 	memcpy(inodeEntryTemp, inode, sizeof(struct ext2_inode));
 	unsigned int inodeRetorno = read_dir(fd, inodeEntryTemp, grupoTemp, originFile);
-
-	change_group(&inodeRetorno, grupoTemp, currentGroup);
 	
+	 
+    // Trocando o grupo (quando necessário) para o que contém o novo inode	
+	change_group(&inodeRetorno, grupoTemp, currentGroup);
+	 
+    // Cálculo do index real do inode no novo grupo
 	int index = inodeRetorno % super.s_inodes_per_group;
 
+	// Atualização do inode no novo grupo
 	read_inode(fd, index, group, inodeEntryTemp);
 	
 	char* destinyFileName = malloc(strlen(destinyFile) + 2);
+	// Concatena "./" no início do nome do arquivo de destino recebido por parâmetro
+	// para a criação (se ainda não existir) do arquivo no diretório do projeto (não
+	// na imagem) 
 	strcat(destinyFileName, "./");
 	strcat(destinyFileName, destinyFile);
 
-	
+	// Cria um arquivo (se não existir) com o nome que foi
+	// recebido por parâmetro para ser o arquivo de destino
 	FILE *destinyFileFile;
 	destinyFileFile = fopen(destinyFileName, "w");
   	
 	if (destinyFileFile == NULL) {
   	  printf("Erro ao tentar abrir o arquivo!");
-  	  //exit(1);
+  	  // exit(1);
   	}
 
 	// Aloca um bloco
@@ -819,7 +866,6 @@ void copia_arquivo(struct ext2_inode* inode, char* originFile, char* destinyFile
 			charLido = block[i];
 
 			// Escreve o caracter lido no arquivo de destino
-			//printf("%c",block[i]);
 			fputc(charLido, destinyFileFile);
 			
 			// Quantidade de dados restantes a serem lidos
@@ -852,7 +898,6 @@ void copia_arquivo(struct ext2_inode* inode, char* originFile, char* destinyFile
 				charLido = block[j];
 
 				// Escreve o caracter lido no arquivo de destino
-				//printf("%c",block[i]);
 				fputc(charLido, destinyFileFile);
 				
 				arqSize = arqSize - 1;
@@ -876,7 +921,6 @@ void copia_arquivo(struct ext2_inode* inode, char* originFile, char* destinyFile
 
 		for(int i = 0; i < 256; i++){
 			
-			//não entendi
 			if(arqSize <= 0){
 				break;
 			}
@@ -899,7 +943,6 @@ void copia_arquivo(struct ext2_inode* inode, char* originFile, char* destinyFile
 					charLido = block[k];
 
 					// Escreve o caracter lido no arquivo de destino
-					//printf("%c",block[i]);
 					fputc(charLido, destinyFileFile);
 					
 					arqSize = arqSize - 1;
@@ -912,12 +955,13 @@ void copia_arquivo(struct ext2_inode* inode, char* originFile, char* destinyFile
 		}
 	}
 
-	// Fazendo o inode voltar a ser o inode do diretório em que estava no momento em que
-	// o cp de um arquivo foi chamado.
+	// Fazendo o inode voltar a ser o inode do diretório em
+	// que estava no momento em que o cp de um arquivo foi chamado
 	unsigned int current_dir_entry_inode = read_dir(fd, inodeEntryTemp, grupoTemp, ".");
 
 	read_inode(fd, current_dir_entry_inode, grupoTemp, inodeEntryTemp);
 
+	// Liberação de memória
 	free(block);
 	free(grupoTemp);
 	free(inodeEntryTemp);
@@ -925,36 +969,25 @@ void copia_arquivo(struct ext2_inode* inode, char* originFile, char* destinyFile
 	fclose(destinyFileFile);
 }
 
-//verifica se por exemplo foi digitado apenas o comando ou o comando e espaço para avisar erro de sintaxe
-int verifica_sintaxe(char* segundoPar) {
-
-	if(strcmp(segundoPar, "NULL") == 0 || strcmp(segundoPar, "") == 0 ) {
-		printf("invalid sintax.\n");
-		return 1;
-	}
-	return 0;
-}
-
 
 int main() {
 
-	struct ext2_inode inode;
-	struct ext2_group_desc group;
-	int currentGroup = 0;
+	struct ext2_inode inode;       // Instanciação de estrutura de inode
+	struct ext2_group_desc group;  // Instanciação de estrutura de descritor de grupo
+	int currentGroup = 0;		   // Variável auxiliar para função change_group
 	
-	// Criando a pilha 
+	// Criação a pilha 
 	Pilha stack = {.tam = 0, .lim = TAMANHO_};
 
  	// Abrindo a imagem (floppy disk image)
  	if ((fd = open(FD_DEVICE, O_RDONLY)) < 0) {
  		perror(FD_DEVICE);
- 		exit(1);  // error while opening the floppy device
+ 		exit(1);
  	}
 
 
-
-// 	/****** read super-block *******/
-// 	/******************************/
+ 	/****** Lê o super-bloco *******/
+ 	/******************************/
 
  	lseek(fd, BASE_OFFSET, SEEK_SET); 
  	read(fd, &super, sizeof(super));
@@ -963,80 +996,26 @@ int main() {
  		fprintf(stderr, "Not a Ext2 filesystem\n");
  		exit(1);
  	}
-		
+	
+	// Calculando tamanho do bloco de dados
  	block_size = 1024 << super.s_log_block_size;
 
 
-
-// 	/********* read group descriptor ***********/
-// 	/******************************************/
+ 	/******** Lê o descritor de grupo **********/
+ 	/******************************************/
 	lseek(fd, BASE_OFFSET + block_size, SEEK_SET);
  	read(fd, &group, sizeof(group));
-	
-// 	read_group_descriptor(group);
 
 
-
-
-	
- 	/******** read root inode ********/
- 	/********************************/
-	// read_inode(fd, 2, &group, &inode);
- 
-  	//print_read_root_inode(inode);
-
-
-
-	/* show entries in the root directory */
+	/* Mostra as entradas do diretório raiz */
 	/*************************************/
-	read_inode(fd, 2, &group, &inode);  // read inode 2 (root directory)
+	// Lê inode 2 (diretório raiz)
+	read_inode(fd, 2, &group, &inode);
 	read_dir(fd, &inode, &group, "/");
 
-	
-	
-	/******** TEST LS **********/
-//	printf("***** TEST LS ******\n\n");
-	//// ls(&inode, &group); ////
 
-
- 	/******** PRINT FILE CONTENT **********/
- 	// read_inode(fd, 12, &group, &inode);
- 	// cat(fd, &group, &inode);
-
-
-
-	
-	/******** TEST CAT (p/ arq especifico -> não. precisamos do cd) **********/
-//	read_inode(fd, 2, &group, &inode);
-//	unsigned int entry_inode = read_dir(fd, &inode, &group, "hello.txt");
-
-//	read_inode(fd, entry_inode, &group, &inode);
-//	cat(fd, &inode);
-
-
-//	/************* TEST GETTING GROUP NUMBER *******************/
-//	entry_inode = 12289;  // documentos
-//	unsigned int gp_number = group_number(entry_inode, super);
-//	printf("%hu\n", gp_number);
-
-
-//	/************ TEST ATTR **************/
-//	read_inode(fd, 2, &group, &inode);
-//	unsigned int entry_inod = read_dir(fd, &inode, &group, "hello.txt");
-
-
- 	/********* TEST CHANGE GROUP ********/
- 	// changeGroup(&inode, &groupToGo, &currentGroup);
-	
-
- 	/******* TEST CD *****/
-// 	printf("*************************************************\n");
-// 	change_directory("livros", &inode, &group, &currentGroup /*, &stack */);
-
-// 	change_directory("religiosos", &inode, &group, &currentGroup, &stack);
-
-
-	/********** TESTE: TUDO NO SHELL ********/
+	/**************** SHELL *****************/
+	/***************************************/
 	char* diretorio = calloc(50, sizeof(char));
 	char *fullCommand = calloc(100, sizeof(char));
 
@@ -1097,20 +1076,28 @@ int main() {
         }
 		
 
-		/****** Comparações: entrada == comando esperado  ******/
+		/****** Comparações: entrada == comando_esperado  ******/
+		/******************************************************/
 		if((strcmp(comando, "cd")) == 0) {
+
+			// Variável de controle que permite a execução do comando
 			podeExecutar = 0;
-		
+
+			// Verifica a sintaxe: caso tenha digitado apenas "cd", retornará 
+			// erro de sintaxe e não permitirá a execução do comando
 			if(strcmp(fullCommand,"cd")==0){
 				printf("\ninvalid sintax.\n");
 				podeExecutar = 1;
 			}
 			
-			strcpy(diretorio,second_param);
+			strcpy(diretorio, second_param);
 			
+			// Verifica se pode chamar a função change_diretory()
 			if(podeExecutar == 0) {
 				change_directory(second_param, &inode, &group, &currentGroup, &stack);
 			}
+
+			// Variavel setada para 0
 			podeExecutar = 0;
 		}
 
@@ -1120,20 +1107,26 @@ int main() {
 
         else if((strcmp(comando, "cat")) == 0) {
 
+			// Invoca a read_dir() para verificar a existência do arquivo
 			read_dir(fd, &inode, &group, second_param);
 
+			// Verifica se pode chamar a função cat()
 			if(podeExecutar != 1){
 				cat(fd, &inode, &group, second_param, &currentGroup);
 			}
 
+			// Verifica a sintaxe, caso tenha digitado apenas "cat", dará erro de sintaxe e não executara o comando
 			if(strcmp(fullCommand,"cat") == 0) {
 				printf("\ninvalid sintax.\n");
 				podeExecutar = 0;
 			}
 			
+			// Caso a read_dir() não encontre o arquivo, podeExecutar recebe 1, então sinaliza que o arquivo não foi encontrado
 			if(podeExecutar == 1){
 				printf("\nfile not found.\n");
 			}
+
+			// Variavel setada para 0
 			podeExecutar = 0;
         }
 
@@ -1146,7 +1139,8 @@ int main() {
 		}
 
 		else if((strcmp(comando, "cp")) == 0) {
-			copia_arquivo(&inode, second_param, third_param, &group, &currentGroup); // destinyFile => third_param | originFile => novo second_param ;
+			// second_param => originFile | third_param => destinyFile
+			copia_arquivo(&inode, second_param, third_param, &group, &currentGroup);
 		}
 
 		else if((strcmp(comando, "exit")) == 0){
@@ -1165,8 +1159,6 @@ int main() {
         // free(second_param);
         // free(third_param);
 	}
-
-
 
 	free(fullCommand);
 	close(fd);
