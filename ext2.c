@@ -9,9 +9,10 @@ Atualizado em: 09/12/2022, 10/12/2022, 16/12/2022, 17/12/2022.
 
 static unsigned int block_size = 0;        /* block size (to be calculated) */
 struct ext2_super_block super;
+int podeExecutar = 0;
 int fd;
 
-/*Alterar depois???*/
+/******* Para controle **********/
 #define EXT2_S_IRUSR 0x0100 // user read
 #define EXT2_S_IWUSR 0x0080 // user write
 #define EXT2_S_IXUSR 0x0040 // user execute
@@ -21,6 +22,7 @@ int fd;
 #define EXT2_S_IROTH 0x0004 // others read
 #define EXT2_S_IWOTH 0x0002 // others write
 #define EXT2_S_IXOTH 0x0001 // others execute
+
 
 
 /******* Pilha **********/
@@ -54,29 +56,18 @@ int POP(Pilha* p)
     return p->tam;
 }
 
-// int TOP(Pilha* p, Registro* val)
-// {
-//     if ((p == NULL) || (val == NULL)) return -1;
-//     if (p->tam == 0) return -2;
-//     strcpy(val, p->dado[p->tam]);
-//     return 0;
-// }
-
 int mostra(Pilha* p, const char* tit)
 {
     if (p == NULL)
     {
-        //printf("pilha invalida\n");
         return -1;
     }
     if (tit != NULL) printf("%s\n", tit);
     if (p->tam == 0)
     {
-        //printf("Pilha VAZIA (cap:%d):\n", p->lim);
 		printf("/");
         return 0;
     }
-    //printf("%d elementos (cap:%d):\n", p->tam, p->lim);
     for (int i = 1; i < p->tam; i += 1)
         printf("/%s", p->dado[i]);
     printf("/%s", p->dado[p->tam]);
@@ -230,13 +221,14 @@ unsigned int read_dir(int fd, const struct ext2_inode *inode, const struct ext2_
 			size += entry->rec_len;
 		}
 
+		if((strcmp(nomeArquivo, entry->name)) != 0) {
+			podeExecutar = 1;
+		}
+
 		free(block);
 	}
 
-	//printf("\n\n");
-	
-	//********TESTE *********
-	// return 1;
+	printf("\n\n");
 } 
 
 
@@ -256,8 +248,6 @@ void cat(int fd, struct ext2_inode *inode, struct ext2_group_desc *group, char *
 	memcpy(grupoTemp, group, sizeof(struct ext2_group_desc));
 	memcpy(inodeEntryTemp, inode, sizeof(struct ext2_inode));
 	unsigned int inodeRetorno = read_dir(fd, inodeEntryTemp, grupoTemp, arquivoNome);
-	
-	printf("\ninodeRetorno: %u\n", inodeRetorno);
 
 	change_group(&inodeRetorno, grupoTemp, currentGroup);
 
@@ -627,7 +617,16 @@ void change_directory(char* dirName, struct ext2_inode *inode, struct ext2_group
 		}
 
 		free(block);
+
+		//se não encontrar o diretorio:
+		if((strcmp(dirName, entry->name)) != 0){
+			printf("\ndirectory not found.");
+		}
+		
 	}
+
+	
+	
 	
 	printf("\n\n");
 
@@ -712,7 +711,7 @@ char* catch_second_param_cp(char* comando) {
         // printf("primeiro_entre_aspas: %s\n", primeiro_entre_aspas);
        
         // Desalocação de memória na condição verdadeira
-        free(command_copy);
+        //free(command_copy);
 
         return primeiro_entre_aspas;
 	
@@ -749,7 +748,7 @@ char* catch_third_param_cp(char* comando) {
         // printf("segundo_entre_aspas: %s\n", segundo_entre_aspas);
 
         // Desalocação de memória na condição verdadeira
-        free(command_copy);
+        //free(command_copy);
 	
         return segundo_entre_aspas;
 
@@ -761,6 +760,7 @@ char* catch_third_param_cp(char* comando) {
 
         // Mensagem para tratamento de erro
         printf("ERRO. Sintaxe inválida: insira o nome dos arquivos entre aspas simples.");
+		
     }
 }
 
@@ -785,14 +785,13 @@ void copia_arquivo(struct ext2_inode* inode, char* originFile, char* destinyFile
 	strcat(destinyFileName, "./");
 	strcat(destinyFileName, destinyFile);
 
-	printf("destinyFileName %s", destinyFileName);
 	
 	FILE *destinyFileFile;
 	destinyFileFile = fopen(destinyFileName, "w");
   	
 	if (destinyFileFile == NULL) {
   	  printf("Erro ao tentar abrir o arquivo!");
-  	  exit(1);
+  	  //exit(1);
   	}
 
 	// Aloca um bloco
@@ -820,6 +819,7 @@ void copia_arquivo(struct ext2_inode* inode, char* originFile, char* destinyFile
 			charLido = block[i];
 
 			// Escreve o caracter lido no arquivo de destino
+			//printf("%c",block[i]);
 			fputc(charLido, destinyFileFile);
 			
 			// Quantidade de dados restantes a serem lidos
@@ -852,6 +852,7 @@ void copia_arquivo(struct ext2_inode* inode, char* originFile, char* destinyFile
 				charLido = block[j];
 
 				// Escreve o caracter lido no arquivo de destino
+				//printf("%c",block[i]);
 				fputc(charLido, destinyFileFile);
 				
 				arqSize = arqSize - 1;
@@ -898,6 +899,7 @@ void copia_arquivo(struct ext2_inode* inode, char* originFile, char* destinyFile
 					charLido = block[k];
 
 					// Escreve o caracter lido no arquivo de destino
+					//printf("%c",block[i]);
 					fputc(charLido, destinyFileFile);
 					
 					arqSize = arqSize - 1;
@@ -909,6 +911,13 @@ void copia_arquivo(struct ext2_inode* inode, char* originFile, char* destinyFile
 			}
 		}
 	}
+
+	// Fazendo o inode voltar a ser o inode do diretório em que estava no momento em que
+	// o cp de um arquivo foi chamado.
+	unsigned int current_dir_entry_inode = read_dir(fd, inodeEntryTemp, grupoTemp, ".");
+
+	read_inode(fd, current_dir_entry_inode, grupoTemp, inodeEntryTemp);
+
 	free(block);
 	free(grupoTemp);
 	free(inodeEntryTemp);
@@ -916,24 +925,15 @@ void copia_arquivo(struct ext2_inode* inode, char* originFile, char* destinyFile
 	fclose(destinyFileFile);
 }
 
+//verifica se por exemplo foi digitado apenas o comando ou o comando e espaço para avisar erro de sintaxe
+int verifica_sintaxe(char* segundoPar) {
 
-
-//saber em que grupo estou 
-//olhar se há espaço disponivel 
-//se sim onde alucar o arquivo 
-//criar o arquivo
-//colocar o nome passado 
-//marcar no map de bits 
-//marcar no mapa de inode 
-//tirar do espaço dsponível 
-void touch(int fd, struct ext2_group_desc* group, char* arquivo_nome){
-	group->bg_block_bitmap;		/* Blocks bitmap block */
-	group->bg_inode_bitmap;		/* Inodes bitmap block */
-	group->bg_inode_table;		/* Inodes table block */
+	if(strcmp(segundoPar, "NULL") == 0 || strcmp(segundoPar, "") == 0 ) {
+		printf("invalid sintax.\n");
+		return 1;
+	}
+	return 0;
 }
-
-
-
 
 
 int main() {
@@ -965,12 +965,6 @@ int main() {
  	}
 		
  	block_size = 1024 << super.s_log_block_size;
- 	//read_super_block(super);
-
-
-
-// 	/******** TEST INFO **********/
-// 	info();
 
 
 
@@ -1048,8 +1042,6 @@ int main() {
 
 	while (1)
     {
-
-        //printf("[/%s]$> ",diretorio);
 		printf("[");
 		mostra(&stack, NULL);
 		printf("]$> ");
@@ -1074,12 +1066,13 @@ int main() {
 			
 			// Captura primeiro parâmetro (comando principal)  Ex.: cp
 			comando = catch_principal_param(fullCommand);
-
+		
 			// Captura terceiro segundo (second_param)         Ex.: <fileOrigin>
 			second_param = catch_second_param_cp(fullCommand);
-
+			
             // Captura terceiro parâmetro (third_param)        Ex.: <fileDestiny>
             third_param = catch_third_param_cp(fullCommand);
+			
 
 
 		// Se existir um espaço no comando e não existir aspas (que nesse caso é a forma correta de usar o
@@ -1089,11 +1082,10 @@ int main() {
             
             // Captura comando principal (comando) 		  Ex.: cat
             comando = catch_principal_param(fullCommand);
-            printf("\ncomando principal la fora: %s\n", comando);
+            //printf("\ncomando principal la fora: %s\n", comando);
 
             // Captura segundo comando (second_param)     Ex.: <fileName>
             second_param = catch_second_param(fullCommand);
-            printf("\nsecond_param la fora: %s\n", second_param);
 
         
         // Caso contrário (ou seja, se não existir o char "espaço" ou " ' " (aspas simples) no comando
@@ -1106,60 +1098,72 @@ int main() {
 		
 
 		/****** Comparações: entrada == comando esperado  ******/
+		if((strcmp(comando, "cd")) == 0) {
+			podeExecutar = 0;
+		
+			if(strcmp(fullCommand,"cd")==0){
+				printf("\ninvalid sintax.\n");
+				podeExecutar = 1;
+			}
+			
+			strcpy(diretorio,second_param);
+			
+			if(podeExecutar == 0) {
+				change_directory(second_param, &inode, &group, &currentGroup, &stack);
+			}
+			podeExecutar = 0;
+		}
 
-        if((strcmp(comando, "ls")) == 0) {
-	       ls(&inode, &group);
-        }
-
-        else if((strcmp(comando, "info")) == 0) {
+    	else if((strcmp(comando, "info")) == 0) {
             info();
         }
 
         else if((strcmp(comando, "cat")) == 0) {
 
-			// ********* TESTE TRATAMENTO DE ERROS **********
-			// if(strcmp(second_param, "NULL") == 0){
-			// 	printf("invalid sintax.\n");
-			// }
+			read_dir(fd, &inode, &group, second_param);
 
+			if(podeExecutar != 1){
+				cat(fd, &inode, &group, second_param, &currentGroup);
+			}
 
-			// if(entry_inode == 1 && (strcmp(second_param, "NULL") != 0)){
-			// 	printf("directory not found.\n");
-			// }
+			if(strcmp(fullCommand,"cat") == 0) {
+				printf("\ninvalid sintax.\n");
+				podeExecutar = 0;
+			}
 			
-            cat(fd, &inode, &group, second_param, &currentGroup);
+			if(podeExecutar == 1){
+				printf("\nfile not found.\n");
+			}
+			podeExecutar = 0;
         }
 
         else if((strcmp(comando, "attr")) == 0) {
             attr(&inode, &group, second_param, &currentGroup);
     	}
 
-		else if((strcmp(comando, "cd")) == 0) {
-			//utilizar pilha
-			strcpy(diretorio,second_param);
-			change_directory(second_param, &inode, &group, &currentGroup, &stack);
-		}
-
-		else if((strcmp(comando, "pwd")) == 0){
+		else if((strcmp(comando, "pwd")) == 0) {
 			pwd(&stack);
 		}
 
 		else if((strcmp(comando, "cp")) == 0) {
-
-			copia_arquivo(&inode, second_param, third_param, &group, &currentGroup); // destinyFile => third_param | originFile => novo second_param 
+			copia_arquivo(&inode, second_param, third_param, &group, &currentGroup); // destinyFile => third_param | originFile => novo second_param ;
 		}
 
 		else if((strcmp(comando, "exit")) == 0){
 			break;
 		}
 
+		else if((strcmp(comando, "ls")) == 0) {
+	       ls(&inode, &group);
+        }
+
 		else {
 			printf("command not found.\n");
 		}
 
-		free(comando);
-        free(second_param);
-        free(third_param);
+		// free(comando);
+        // free(second_param);
+        // free(third_param);
 	}
 
 
