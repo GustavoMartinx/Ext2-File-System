@@ -1,13 +1,15 @@
 Implementação de Sistema de Arquivos EXT2
 Alunos: Amanda Ferrari, Catarine Cruz e Gustavo Zanzin. 
 
+-Primeiramente, verifique se a imagem myext2image.img está na pasta "implementação", caso não esteja, por favor realize o download da imagem e a insira dentro da pasta "implementação".
+
 -Como Compilar:
 Utilizando o arquivo makefile:
  Apenas digitar "make super"
 Sem o makefile:
  gcc "nome_do_arquivo".c
 
--Como executar: 
+-Como executar:
 Utilizando o arquivo makefile:
  Apenas digitar "make debug" 
 Sem o makefile:
@@ -73,7 +75,7 @@ Record lenght: 928
 Name lenght: 9
 File type: 1
 
--Exemplo de uso
+-OBS.:
 Para utilizar o comando cp, basta digitar:
 cp 'arquivo_origem.txt' 'arquivo_destino.txt'
 Note que ambos arquivos precisam necessariamente estar entre aspas simples.
