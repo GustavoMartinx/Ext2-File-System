@@ -331,7 +331,7 @@ void cat(int fd, struct ext2_inode *inode, struct ext2_group_desc *group, char *
 
 	// Se depois dos blocos com uma indireção ainda existirem dados,
 	// percorre o bloco 13 (dupla indireção)
-	if(arqSize > 0){
+	if(arqSize > 0) {
 
 		lseek(fd, BLOCK_OFFSET(inodeEntryTemp->i_block[13]), SEEK_SET);
 		read(fd, doubleIndirection, block_size);
@@ -1106,6 +1106,9 @@ int main() {
         }
 
         else if((strcmp(comando, "cat")) == 0) {
+
+			// Variável de controle que permite a execução do comando
+			podeExecutar = 0;
 
 			// Invoca a read_dir() para verificar a existência do arquivo
 			read_dir(fd, &inode, &group, second_param);
