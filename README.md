@@ -1,37 +1,133 @@
 <h1> Implementação do Sistema de Arquivos EXT2 </h1>
 
--Primeiramente, verifique se a imagem myext2image.img está na pasta "implementação", caso não esteja, por favor realize o download da imagem e a insira dentro da pasta "implementação".
+Este programa implementa as estruturas de dados e operações para manipular a imagem (``.iso``) de um sistema de arquivos EXT2. As
+operações são invocadas a partir de um prompt (shell). O shell executa as operações a partir da referência
+do diretório corrente. O shell sempre inicia no raiz (``/``) da imagem informada por parâmetro.
 
--Como Compilar:<br>
-Utilizando o arquivo makefile:<br>
- Apenas digitar "make super"<br>
-Sem o makefile:<br>
- gcc "nome_do_arquivo".c
+As estruturas e a lógica de manipulação foram implementadas a partir da especificação do ext2:
+https://www.nongnu.org/ext2-doc/ext2.html
 
--Como executar:<br>
-Utilizando o arquivo makefile:<br>
- Apenas digitar "make debug" <br>
-Sem o makefile:<br>
- ./a.out
 
--Bibliotecas usadas:<br>
-   time.h, essa biblioteca contém diversas funções e constantes para a manipulação do tempo, como datas, horas e etc.<br>
-   sys/types.h, define uma coleção de símbolos e estruturas de typedef.<br>
-   sys/stat.h, declara funções relacionadas ao arquivo UNIX.<br>
-   sys/wait.h, contém um conjunto de macros, usadas para manter processos.<br>
-   sys/resource.h, contém definições para operações de recursos XSI.<br>
-   fcntl.h, define requisições e argumentos para uso das funções fcntl() e open().<br>
-   unistd.h, fornece acesso à API do sistema operacional POSIX.<br>
-   errno.h, retorna um valor para indicar se uma função falhou.<br>
-   ./ext2_fs.h, fornece estruturas de typedef relacionadas ao EXT2.<br>
-   
+<h3>Operações:</h3>
 
--Exemplo de uso:<br>
-Utilizando o comando ls, por exemplo:
+- `info`: exibe informações do disco e do sistema de arquivos.
+- `cat <filename>`: exibe o conteúdo de um arquivo no formato texto.
+- `attr <file | dir>`: exibe os atributos de um arquivo (*file*) ou diretório (*dir*).
+- `cd <path>`: altera o diretório corrente para o definido como *path*.
+- `ls`: listar os arquivos e diretórios do diretório corrente.
+- `pwd`: exibe o diretório corrente (caminho absoluto).
+- `cp '<source_path>' '<target_path>'`: copia um arquivo de origem (*source_path*) para destino (*target_path*). A origem e o destino devem ser uma partição do disco e o volume ext2 ou vice-versa. Note que os nomes de ambos arquivos precisam necessariamente estar entre aspas simples.
+<br>
+
+
+<h3>Para compilar:</h3>
+
+- Descompacte a imagem ``myext2image.tar.gz`` e verifique sua integridade. Caso estiver corrompida, por favor realize novamente o download da imagem (isso pode ser feito [aqui](https://github.com/campiolo/ext2cat/tree/main)
+) ou gere sua própria imagem ext2. E, por fim, a insira no diretório raiz deste projeto.
+
+```bash
+# utilizando o makefile
+make super
+```
+
+```bash
+# sem makefile
+gcc ext2.c
+```
+
+<h3>Para executar:</h3>
+<!-- ```console
+# ./ext2cat <ext2-image-file>
+``` -->
+
+```bash
+# utilizando o makefile
+make debug
+```
+
+```bash
+# sem makefile
+./a.out
+```
+
+<br>
+
+
+## Geração da Imagem de Volume Ext2
+
+Gerando imagens ext2 (64MiB com blocos de 1K):
+```console
+dd if=/dev/zero of=./myext2image.img bs=1024 count=64K
+mkfs.ext2 -b 1024 ./myext2image.img
+```
+
+Verificando a integridade de um sistema ext2:
+```console
+e2fsck myext2image.img
+```
+
+Montando a imagem do volume com ext2:
+```console
+sudo mount myext2image.img /mnt
+```
+
+Estrutura original de arquivos do volume (comando `tree` via bash):
+```
+/
+├── [1.0K]  documentos
+│   ├── [1.0K]  emptydir
+│   ├── [9.2K]  alfabeto.txt
+│   └── [   0]  vazio.txt
+├── [1.0K]  imagens
+│   ├── [8.1M]  one_piece.jpg
+│   ├── [391K]  saber.jpg
+│   └── [ 11M]  toscana_puzzle.jpg
+├── [1.0K]  livros
+│   ├── [1.0K]  classicos
+│   │   ├── [506K]  A Journey to the Centre of the Earth - Jules Verne.txt
+│   │   ├── [409K]  Dom Casmurro - Machado de Assis.txt
+│   │   ├── [861K]  Dracula-Bram_Stoker.txt
+│   │   ├── [455K]  Frankenstein-Mary_Shelley.txt
+│   │   └── [232K]  The Worderful Wizard of Oz - L. Frank Baum.txt
+│   └── [1.0K]  religiosos
+│       └── [3.9M]  Biblia.txt
+├── [ 12K]  lost+found
+└── [  29]  hello.txt
+
+```
+
+Desmontando a imagem do volume com ext2:
+```console
+sudo umount /mnt
+```
+
+<br>
+
+## Exemplos
+
+Os exemplos são executados na imagem `myext2image.img` 
+
+Informações do volume e do ext2 (comando `info`):
+```console
+[/]$> info
+Volume name.....: SO-UTFPR-1k
+Image size......: 67108864 bytes
+Free space......: 32133 KiB
+Free inodes.....: 16355
+Free blocks.....: 35409
+Block size......: 1024 bytes
+Inode size......: 128 bytes
+Groups count....: 8
+Groups size.....: 8192 blocks
+Groups inodes...: 2048 inodes
+Inodetable size.: 256 blocks
+```
+<br>
+
+
+Listagem do diretório raiz (comando `ls`):
+```console
 [/]$> ls
-
-Obtemos o seguinte resultado:
-
 .
 inode:      	2
 Record lenght: 12
@@ -74,10 +170,30 @@ Record lenght: 928
 Name lenght: 9
 File type: 1
 
--OBS.:<br>
-Para utilizar o comando cp, basta digitar:<br>
-cp 'arquivo_origem.txt' 'arquivo_destino.txt'<br>
-Note que ambos arquivos precisam necessariamente estar entre aspas simples.
+```
+
+ 
+
+## Bibliotecas Utilizadas
+
+- `time.h`: Oferece funções e constantes para manipulação do tempo, incluindo datas e horas.
+
+- `sys/types.h`: Define símbolos e estruturas de typedef para operações diversas.
+
+- `sys/stat.h`: Declara funções relacionadas a manipulação de arquivos no ambiente UNIX.
+
+- `sys/wait.h`: Contém macros utilizadas para controle de processos.
+
+- `sys/resource.h`: Oferece definições para operações de recursos conforme o padrão XSI.
+
+- `fcntl.h`: Define requisições e argumentos para as funções `fcntl()` e `open()`, úteis para manipulação de arquivos.
+
+- `unistd.h`: Fornece acesso à API do sistema operacional POSIX, facilitando operações de sistema.
+
+- `errno.h`: Retorna valores para indicar falhas em funções.
+
+- `./ext2_fs.h`: Contém estruturas de typedef relacionadas ao sistema de arquivos EXT2.
+
 
 
 
