@@ -78,3 +78,36 @@ File type: 1
 Para utilizar o comando cp, basta digitar:<br>
 cp 'arquivo_origem.txt' 'arquivo_destino.txt'<br>
 Note que ambos arquivos precisam necessariamente estar entre aspas simples.
+
+
+
+### :mortar_board: Autores
+
+<table style="flex-wrap: wrap; display: flex; align-items: center;  flex-direction: column;" ><tr>
+
+
+<td align="center"><a href="https://github.com/amandaferrari20">
+ <img style="border-radius: 50%;" src="https://avatars.githubusercontent.com/u/86694266?v=4" width="100px;" alt=""/>
+<br />
+ <b>Amanda<br>Ferrari</b></a>
+ <a href="https://github.com/amandaferrari20" title="Repositorio Amanda Ferrari"></a>
+</td>
+
+
+<td align="center"><a href="https://github.com/eniira">
+ <img style="border-radius: 50%;" src="https://avatars.githubusercontent.com/u/102331777?v=4" width="100px;" alt=""/>
+<br />
+ <b>Catarine<br>Cruz
+</b>
+ </a> <a href="https://github.com/eniira" title="Repositorio Catarine Cruz"></a>
+</td>
+
+
+<td align="center"><a href="https://github.com/GustavoMartinx">
+ <img style="border-radius: 50%;" src="https://avatars.githubusercontent.com/u/90780907?v=4" width="100px;" alt=""/>
+<br />
+ <b>Gustavo<br>Martins</b>
+ </a> <a href="https://github.com/GustavoMartinx" title="Repositorio Gustavo Martins"></a>
+</td>
+
+</tr></table>
